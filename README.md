@@ -7,16 +7,17 @@ Parameters:
 - **dim**: (=2) The dimensionality of the problem
 - **pos**: (N * vec_dim) The positions of each particle
 - **vel**: (N * vec_dim) The velocities of each particle
+
 1. Define the initial values for the parameters of the simulation
 2. Shader compute the relative values for pairs are particles
-  1. Relative positions
-  2. Gravitational forces
-  3. Electromagentic forces
-  3. Collisions
+   1. Relative positions
+   2. Gravitational forces
+   3. Electromagentic forces
+   3. Collisions
 3. Compute the updates for each particle
-  1. Velocity updates
-  2. Position updates
-  3. Wall collisions
+   1. Velocity updates
+   2. Position updates
+   3. Wall collisions
 4. Draw the particles from their data in texture
 
 ## GPGPU with WebGL 
@@ -36,9 +37,9 @@ Parameters:
 - **u**: The number of uniforms used (vectors, matrices and textures count for as many elements as they possess)
 - **v**: The number of varyings used (vectors and matrices count for as many elements as they possess)
 
-The number of inputs is: v*h*w+ u  
-The number of outputs is:  h*w*c  
-The number of parallel threads is: h*w  
+The number of inputs is given by: ![vhw+u](https://render.githubusercontent.com/render/math?math=vhw%2Bu)  
+The number of outputs is given by:  ![hwc](https://render.githubusercontent.com/render/math?math=hwc)  
+The number of parallel threads is given by: ![hw](https://render.githubusercontent.com/render/math?math=hw)  
 
 ## WebGL resources
 ### Complete Guides
