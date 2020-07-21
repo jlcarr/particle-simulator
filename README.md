@@ -19,6 +19,27 @@ Parameters:
   3. Wall collisions
 4. Draw the particles from their data in texture
 
+## GPGPU with WebGL 
+https://en.wikipedia.org/wiki/General-purpose_computing_on_graphics_processing_units  
+Given that WebGL is designed for 3d graphics rendering, one must jump through a few hoops to perform general purpose computations GPU computation with WebGL.  
+### Approach
+- The approach used is to use an intermediate "compute" program to write to a texture.
+- To cover the output texture, the vertex shader should simply render a quad across the screen.
+- Therefore the vertex shader essentially acts as a passthrough to the fragment shader.
+- The fragment shader performs the computation.
+### Parallelism vs. Output size
+For a given WebGL program using he above approach the parallelism can be described as follows  
+Parameters:
+- **h**: The height of the output texture in the framebuffer.
+- **w**: Thewidth of the output texture in the framebuffer.
+- **c**: The number of color channels of the output texture
+- **u**: The number of uniforms used (vectors, matrices and textures count for as many elements as they possess)
+- **v**: The number of varyings used (vectors and matrices count for as many elements as they possess)
+
+The number of inputs is: v*h*w+ u  
+The number of outputs is:  h*w*c  
+The number of parallel threads is: h*w  
+
 ## WebGL resources
 ### Complete Guides
 https://webglfundamentals.org  
