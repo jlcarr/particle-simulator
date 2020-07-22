@@ -52,3 +52,5 @@ https://www.tutorialspoint.com/webgl/webgl_drawing_points.htm
 ### Physics Examples
 https://gpfault.net/posts/webgl2-particles.txt.html  
 https://github.com/PavelDoGreat/WebGL-Fluid-Simulation/blob/master/script.js  
+https://stackoverflow.com/questions/56780278/how-to-keep-coordination-between-particles-and-which-texture-pixel-contains-each  
+https://stackoverflow.com/questions/15090657/texture-driven-particles-in-webgl-opengl-using-a-shader  
