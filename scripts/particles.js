@@ -12,6 +12,8 @@ texture: current_state
 program: draw current state to bottom rect
 
 program: draw particles from state
+
+RG[0,1]^2 -> clipspace[-1,1]^2
 */
 
 /**** Shader Programs ****/
@@ -30,30 +32,36 @@ let stateComputeVShader = `
 let stateComputeFShader = `
 	precision mediump float;
 
-	uniform vec2 texture_size;
+	uniform float t;
 
+	// State texture
+	uniform vec2 texture_size;
 	varying vec2 texcoord_passthru;
 	uniform sampler2D texture_ptr;
 
 	void main() {
 		//gl_FragColor = texture2D(texture_ptr, texcoord_passthru);
-		if (gl_FragCoord.x > 1.0 && gl_FragCoord.x < 1.0+3.0) gl_FragColor = texture2D(texture_ptr, texcoord_passthru);
+		if (gl_FragCoord.x > 1.0 && gl_FragCoord.x < 1.0+3.0) gl_FragColor = texture2D(texture_ptr, texcoord_passthru) + 0.1*vec4(cos(t),sin(t),0,0);
 		else gl_FragColor = vec4(1,0,0,1);
 	}
 `;
 
 // Draw
 let drawVShader = `
-	attribute vec2 position;
-
 	// State selection
 	uniform int n_particles;
 	attribute float particle_index;
 	uniform sampler2D state_ptr;
 
+	vec4 stateSelect(sampler2D stateTexture, int stateSize, float selection){
+		float stateSizef = float(stateSize);
+		return 2.0*texture2D(stateTexture, vec2(selection/stateSizef,0)) - 1.0;
+	}
+
 	void main(void) {
-		gl_Position = vec4(position, 0.0, 1.0);
-		gl_PointSize = 20.0- particle_index;
+		vec4 state = stateSelect(state_ptr, n_particles, particle_index);
+		gl_Position = vec4(state.xy/2.0, 0.0, 1.0); //vec4(position + state.xy/2.0, 0.0, 1.0);
+		gl_PointSize = 10.0 - 5.0*state.x; //- 2.0*particle_index;//
 	}
 `;
 let drawFShader = `
@@ -126,6 +134,7 @@ function main() {
 	stateComputeProgram = buildShaderProgram(stateComputeVShader, stateComputeFShader);
 	gl.useProgram(stateComputeProgram);
 	// State Program: uniform indicies
+	var computeTLocation = gl.getUniformLocation(stateComputeProgram, "t");
 	var computeTextureLocation = gl.getUniformLocation(stateComputeProgram, "texture_ptr");
 	var computeResolutionLocation = gl.getUniformLocation(stateComputeProgram, "texture_size");
 	// State Program: attributes indicies
@@ -139,7 +148,6 @@ function main() {
 	var drawNLocation = gl.getUniformLocation(drawProgram, "n_particles");
 	var drawTextureLocation = gl.getUniformLocation(drawProgram, "state_ptr");
 	// Draw Program: attributes indicies
-	var drawPositionLocation = gl.getAttribLocation(drawProgram, "position");
 	var drawIndexLocation = gl.getAttribLocation(drawProgram, "particle_index");
 
 	
@@ -148,7 +156,6 @@ function main() {
 	var statePositionBuffer = gl.createBuffer();
 	var reportPositionBuffer = gl.createBuffer();
 	var texcoordBuffer = gl.createBuffer();
-	var drawPositionBuffer = gl.createBuffer();
 	var drawIndexBuffer = gl.createBuffer();
 	// Shared: texture allocations and indicies
 	var prevStateTexture = gl.createTexture();
@@ -193,18 +200,6 @@ function main() {
 	]);
 	gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
-
-	// Provide default coordinates for the particle (TO REMOVE)
-	var drawPositions = new Float32Array([
-		0.0, 0.0,
-		-0.5, -0.5,
-		-0.5, 0.5,
-		0.5, 0.5,
-		0.5, -0.5,
-		-0.525, -0.525
-	]);
-	gl.bindBuffer(gl.ARRAY_BUFFER, drawPositionBuffer);
-	gl.bufferData(gl.ARRAY_BUFFER, drawPositions, gl.STATIC_DRAW);
 	
 	// Provide matching texture coordinates for the rectangle.
 	var drawIndicies = new Float32Array([...Array(n_particles).keys()]);
@@ -214,10 +209,10 @@ function main() {
 	// fill texture with pixels
 	var texData = new Uint8Array([
 		0, 0, 0,
-		64, 64, 64,
-		128, 128, 128,
-		192, 192, 192,
-		255, 255, 255,
+		64, 64, 0,
+		128, 128, 0,
+		192, 192, 0,
+		255, 255, 0,
 	]);
 	// Fill data into a texture
 	gl.bindTexture(gl.TEXTURE_2D, prevStateTexture);
@@ -242,7 +237,7 @@ function main() {
 
 
 	/**** Define Rendering ****/
-	function stateCompute(){
+	function stateCompute(t){
 		// Use the stateCompute program
 		gl.useProgram(stateComputeProgram);
 		
@@ -264,6 +259,9 @@ function main() {
 		gl.bindTexture(gl.TEXTURE_2D, prevStateTexture);
 		gl.uniform1i(computeTextureLocation, 0);
 		gl.uniform2f(computeResolutionLocation, n_particles, 0);
+		
+		// Set Uniforms
+		gl.uniform1f(computeTLocation, t);
 		
 		// Clear the view
 		gl.clearColor(1, 1, 1, 1);  // Clear the attachment(s).
@@ -310,16 +308,10 @@ function main() {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 		gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 		
-		// Turn on the position attribute
-		gl.bindBuffer(gl.ARRAY_BUFFER, drawPositionBuffer);
-		gl.enableVertexAttribArray(drawPositionLocation);
-		gl.vertexAttribPointer(drawPositionLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
-		
 		// Turn on the particle index attribute
 		gl.bindBuffer(gl.ARRAY_BUFFER, drawIndexBuffer);
 		gl.enableVertexAttribArray(drawIndexLocation);
 		gl.vertexAttribPointer(drawIndexLocation, 1, gl.FLOAT, false, 0, 0);
-		
 		
 		// Tell the shader to use texture unit 0 for u_texture
 		gl.bindTexture(gl.TEXTURE_2D, nextStateTexture);
@@ -346,11 +338,11 @@ function main() {
 		var loopFraction = (time % loopLength)/parseFloat(loopLength);
 		
 		
-		stateCompute();
+		stateCompute(time);
 		stateDraw(true);
 		stateReport(false);
 		
-		//requestAnimationFrame(drawFrame);
+		requestAnimationFrame(drawFrame);
 	}
 	requestAnimationFrame(drawFrame);
 }
