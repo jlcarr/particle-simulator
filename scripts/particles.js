@@ -32,7 +32,7 @@ let stateComputeVShader = `
 let stateComputeFShader = `
 	precision mediump float;
 
-	uniform float t;
+	uniform float dt;
 
 	// State texture
 	uniform vec2 texture_size;
@@ -40,7 +40,9 @@ let stateComputeFShader = `
 	uniform sampler2D texture_ptr;
 
 	void main() {
-		gl_FragColor = texture2D(texture_ptr, texcoord_passthru) + 0.2*vec4(cos(t),sin(t),0,0);
+		vec4 state = texture2D(texture_ptr, texcoord_passthru);
+		vec2 updatedPosition = mod(state.xy + 0.25*dt, 1.0);
+		gl_FragColor = vec4(updatedPosition, state.zw); //+ 0.2*vec4(cos(t),sin(t),0,0);
 		//if (gl_FragCoord.x > 1.0 && gl_FragCoord.x < 1.0+3.0) gl_FragColor = texture2D(texture_ptr, texcoord_passthru) + 0.1*vec4(cos(t),sin(t),0,0);
 		//else gl_FragColor = vec4(1,0,0,1);
 	}
@@ -138,7 +140,7 @@ function main() {
 	stateComputeProgram = buildShaderProgram(stateComputeVShader, stateComputeFShader);
 	gl.useProgram(stateComputeProgram);
 	// State Program: uniform indicies
-	var computeTLocation = gl.getUniformLocation(stateComputeProgram, "t");
+	var computeTLocation = gl.getUniformLocation(stateComputeProgram, "dt");
 	var computeTextureLocation = gl.getUniformLocation(stateComputeProgram, "texture_ptr");
 	var computeResolutionLocation = gl.getUniformLocation(stateComputeProgram, "texture_size");
 	// State Program: attributes indicies
@@ -163,10 +165,11 @@ function main() {
 	var drawIndexBuffer = gl.createBuffer();
 	// Shared: texture allocations and indicies
 	var prevStateTexture = gl.createTexture();
-	const nextStateTexture = gl.createTexture();
+	var nextStateTexture = gl.createTexture();
 	// Shared: framebuffer allocations and indicies
-	const fb = gl.createFramebuffer();
-	
+	var nextFB = gl.createFramebuffer();
+	var prevFB = gl.createFramebuffer();
+
 
 	/**** Initialize Buffers ****/
 	// Create a buffer for compute rect positions
@@ -235,9 +238,13 @@ function main() {
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-	// Create and bind the framebuffer
-	gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+	// Create and bind the framebuffer for the next state
+	gl.bindFramebuffer(gl.FRAMEBUFFER, nextFB);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, nextStateTexture, 0);
+	
+	// Create and bind the framebuffer for the prev state (for swapping)
+	gl.bindFramebuffer(gl.FRAMEBUFFER, prevFB);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, prevStateTexture, 0);
 
 
 	/**** Define Rendering ****/
@@ -246,7 +253,7 @@ function main() {
 		gl.useProgram(stateComputeProgram);
 		
 		// render to our targetTexture by binding the framebuffer
-		gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, nextFB);
 		gl.viewport(0, 0, n_particles, 1);  // Tell WebGL how to convert from clip space to pixels
 		
 		// Turn on the position attribute
@@ -342,9 +349,17 @@ function main() {
 		var loopFraction = (time % loopLength)/parseFloat(loopLength);
 		
 		
-		stateCompute(time);
+		stateCompute(dt);
 		stateReport(true);
 		stateDraw(false);
+		
+		// Swap buffers
+		var tempFB = prevFB;
+		prevFB = nextFB;
+		nextFB = tempFB;
+		var tempStateTexture = prevStateTexture;
+		prevStateTexture = nextStateTexture;
+		nextStateTexture = tempStateTexture;
 		
 		requestAnimationFrame(drawFrame);
 	}
