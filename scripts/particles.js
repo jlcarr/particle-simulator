@@ -40,9 +40,9 @@ let stateComputeFShader = `
 	uniform sampler2D texture_ptr;
 
 	void main() {
-		//gl_FragColor = texture2D(texture_ptr, texcoord_passthru);
-		if (gl_FragCoord.x > 1.0 && gl_FragCoord.x < 1.0+3.0) gl_FragColor = texture2D(texture_ptr, texcoord_passthru) + 0.1*vec4(cos(t),sin(t),0,0);
-		else gl_FragColor = vec4(1,0,0,1);
+		gl_FragColor = texture2D(texture_ptr, texcoord_passthru) + 0.2*vec4(cos(t),sin(t),0,0);
+		//if (gl_FragCoord.x > 1.0 && gl_FragCoord.x < 1.0+3.0) gl_FragColor = texture2D(texture_ptr, texcoord_passthru) + 0.1*vec4(cos(t),sin(t),0,0);
+		//else gl_FragColor = vec4(1,0,0,1);
 	}
 `;
 
@@ -60,8 +60,8 @@ let drawVShader = `
 
 	void main(void) {
 		vec4 state = stateSelect(state_ptr, n_particles, particle_index);
-		gl_Position = vec4(state.xy/2.0, 0.0, 1.0); //vec4(position + state.xy/2.0, 0.0, 1.0);
-		gl_PointSize = 10.0 - 5.0*state.x; //- 2.0*particle_index;//
+		gl_Position = vec4(state.xy, 0.0, 1.0); //vec4(position + state.xy/2.0, 0.0, 1.0);
+		gl_PointSize = 20.0;// - 5.0*state.x; //- 2.0*particle_index;//
 	}
 `;
 let drawFShader = `
@@ -71,8 +71,10 @@ let drawFShader = `
 		vec2 fragmentPosition = 2.0*gl_PointCoord - 1.0;
 		float distanceSq = dot(fragmentPosition, fragmentPosition);
 		float alpha = 1.0;
+		vec3 color = vec3(0, 0, 0);
 		if (distanceSq > 1.0) alpha = 0.0; // || distanceSq < 0.64
-		gl_FragColor = vec4(0, 0, 0, alpha);
+		if (distanceSq < 0.64) color = vec3(1, 1, 1);
+		gl_FragColor = vec4(color, alpha);
 	}
 `;
 
@@ -110,7 +112,9 @@ function main() {
 	// Other settings
 	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.enable(gl.CULL_FACE);
-    gl.enable(gl.DEPTH_TEST);
+    //gl.enable(gl.DEPTH_TEST);
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 	
 	
 	/**** Initial JS Setup ****/
@@ -339,8 +343,8 @@ function main() {
 		
 		
 		stateCompute(time);
-		stateDraw(true);
-		stateReport(false);
+		stateReport(true);
+		stateDraw(false);
 		
 		requestAnimationFrame(drawFrame);
 	}
