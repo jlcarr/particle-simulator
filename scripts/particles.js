@@ -19,13 +19,13 @@ RG[0,1]^2 -> clipspace[-1,1]^2
 /**** Shader Programs ****/
 // State Compute
 let stateComputeVShader = `
-	attribute vec4 position;
+	attribute vec4 screenquad;
 
 	attribute vec2 texcoord;
 	varying vec2 texcoord_passthru;
 
 	void main() {
-		gl_Position = position;
+		gl_Position = screenquad;
 		texcoord_passthru = texcoord;
 	}
 `;
@@ -37,11 +37,15 @@ let stateComputeFShader = `
 	// State texture
 	uniform vec2 texture_size;
 	varying vec2 texcoord_passthru;
-	uniform sampler2D texture_ptr;
+	// Positions
+	uniform sampler2D position_tex;
+	// Velocities
+	uniform sampler2D velocity_tex;
 
 	void main() {
-		vec4 state = texture2D(texture_ptr, texcoord_passthru);
-		vec2 updatedPosition = mod(state.xy + 0.25*dt, 1.0);
+		vec4 state = texture2D(position_tex, texcoord_passthru);
+		vec4 velocity = 2.0*texture2D(velocity_tex, texcoord_passthru) - 1.0;
+		vec2 updatedPosition = mod(state.xy + 0.25*dt*velocity.xy, 1.0);
 		gl_FragColor = vec4(updatedPosition, state.zw); //+ 0.2*vec4(cos(t),sin(t),0,0);
 		//if (gl_FragCoord.x > 1.0 && gl_FragCoord.x < 1.0+3.0) gl_FragColor = texture2D(texture_ptr, texcoord_passthru) + 0.1*vec4(cos(t),sin(t),0,0);
 		//else gl_FragColor = vec4(1,0,0,1);
@@ -63,7 +67,7 @@ let drawVShader = `
 	void main(void) {
 		vec4 state = stateSelect(state_ptr, n_particles, particle_index);
 		gl_Position = vec4(state.xy, 0.0, 1.0); //vec4(position + state.xy/2.0, 0.0, 1.0);
-		gl_PointSize = 20.0;// - 5.0*state.x; //- 2.0*particle_index;//
+		gl_PointSize = 16.0 + 2.0*particle_index; //- 2.0*particle_index;//
 	}
 `;
 let drawFShader = `
@@ -139,12 +143,13 @@ function main() {
 	// Compute Program: compilation
 	stateComputeProgram = buildShaderProgram(stateComputeVShader, stateComputeFShader);
 	gl.useProgram(stateComputeProgram);
-	// State Program: uniform indicies
+	// Compute Program: uniform indicies
 	var computeTLocation = gl.getUniformLocation(stateComputeProgram, "dt");
-	var computeTextureLocation = gl.getUniformLocation(stateComputeProgram, "texture_ptr");
+	var computeTextureLocation = gl.getUniformLocation(stateComputeProgram, "position_tex");
+	var computeVelocityLocation = gl.getUniformLocation(stateComputeProgram, "velocity_tex");
 	var computeResolutionLocation = gl.getUniformLocation(stateComputeProgram, "texture_size");
-	// State Program: attributes indicies
-	var computePositionLocation = gl.getAttribLocation(stateComputeProgram, "position");
+	// Compute Program: attributes indicies
+	var computePositionLocation = gl.getAttribLocation(stateComputeProgram, "screenquad");
 	var computeTexcoordLocation = gl.getAttribLocation(stateComputeProgram, "texcoord");
 	
 	// Draw Program: compilation
@@ -166,6 +171,7 @@ function main() {
 	// Shared: texture allocations and indicies
 	var prevStateTexture = gl.createTexture();
 	var nextStateTexture = gl.createTexture();
+	var velocityTexture = gl.createTexture();
 	// Shared: framebuffer allocations and indicies
 	var nextFB = gl.createFramebuffer();
 	var prevFB = gl.createFramebuffer();
@@ -214,7 +220,7 @@ function main() {
 	gl.bufferData(gl.ARRAY_BUFFER, drawIndicies, gl.STATIC_DRAW);
 	
 	// fill texture with pixels
-	var texData = new Uint8Array([
+	var positionTexData = new Uint8Array([
 		0, 0, 0,
 		64, 64, 0,
 		128, 128, 0,
@@ -223,7 +229,7 @@ function main() {
 	]);
 	// Fill data into a texture
 	gl.bindTexture(gl.TEXTURE_2D, prevStateTexture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, n_particles, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, texData);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, n_particles, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, positionTexData);
 	// set the filtering so we don't need mips and it's not filtered
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -233,6 +239,21 @@ function main() {
 	// Create a texture to render to
 	gl.bindTexture(gl.TEXTURE_2D, nextStateTexture);
 	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, n_particles, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	
+	// Create a texture for velocity
+	var velocityTexData = new Uint8Array([
+		0, 192, 0,
+		64, 255, 0,
+		128, 0, 0,
+		192, 64, 0,
+		255, 128, 0,
+	]);
+	gl.bindTexture(gl.TEXTURE_2D, velocityTexture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, n_particles, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, velocityTexData);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -267,8 +288,13 @@ function main() {
 		gl.vertexAttribPointer(computeTexcoordLocation, 2, gl.FLOAT, false, 0, 0);
 		
 		// Tell the shader to use texture unit 0 for u_texture
+		gl.activeTexture(gl.TEXTURE0);
 		gl.bindTexture(gl.TEXTURE_2D, prevStateTexture);
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, velocityTexture);
+		gl.activeTexture(gl.TEXTURE0);
 		gl.uniform1i(computeTextureLocation, 0);
+		gl.uniform1i(computeVelocityLocation, 1);
 		gl.uniform2f(computeResolutionLocation, n_particles, 0);
 		
 		// Set Uniforms
