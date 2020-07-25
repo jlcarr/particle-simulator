@@ -44,11 +44,9 @@ let stateComputeFShader = `
 
 	void main() {
 		vec4 state = texture2D(position_tex, texcoord_passthru);
-		vec4 velocity = 2.0*texture2D(velocity_tex, texcoord_passthru) - 1.0;
-		vec2 updatedPosition = mod(state.xy + 0.25*dt*velocity.xy, 1.0);
-		gl_FragColor = vec4(updatedPosition, state.zw); //+ 0.2*vec4(cos(t),sin(t),0,0);
-		//if (gl_FragCoord.x > 1.0 && gl_FragCoord.x < 1.0+3.0) gl_FragColor = texture2D(texture_ptr, texcoord_passthru) + 0.1*vec4(cos(t),sin(t),0,0);
-		//else gl_FragColor = vec4(1,0,0,1);
+		vec4 velocity = 2.*texture2D(velocity_tex, texcoord_passthru)-1.;
+		vec2 updatedPosition = mod(state.xy + dt*velocity.xy, 1.0);
+		gl_FragColor = vec4(updatedPosition, state.zw);
 	}
 `;
 
@@ -66,8 +64,8 @@ let drawVShader = `
 
 	void main(void) {
 		vec4 state = stateSelect(state_ptr, n_particles, particle_index);
-		gl_Position = vec4(state.xy, 0.0, 1.0); //vec4(position + state.xy/2.0, 0.0, 1.0);
-		gl_PointSize = 16.0 + 2.0*particle_index; //- 2.0*particle_index;//
+		gl_Position = vec4(state.xy, 0.0, 1.0);
+		gl_PointSize = 10.0 + 20.0*particle_index/float(n_particles-1); //- 2.0*particle_index;//
 	}
 `;
 let drawFShader = `
@@ -104,7 +102,8 @@ let stateReportFShader = `
 	uniform sampler2D texture_ptr;
 
 	void main() {
-		gl_FragColor = texture2D(texture_ptr, texcoord_passthru);
+		vec4 temp = texture2D(texture_ptr, texcoord_passthru); // the blue-red space is slightly nicer
+		gl_FragColor = vec4(temp.x,temp.z,temp.y,temp.w);
 	}
 `;
 
@@ -116,6 +115,7 @@ function main() {
 	// Set the view port
 	gl.viewport(0,0, glCanvas.width, glCanvas.height);
 	// Other settings
+	gl.getExtension("OES_texture_float");
 	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.enable(gl.CULL_FACE);
     //gl.enable(gl.DEPTH_TEST);
@@ -126,7 +126,7 @@ function main() {
 	/**** Initial JS Setup ****/
 	// Setup data
 	var n_dim = 2;
-	var n_particles = 5;
+	var n_particles = 10;
 	var n_tris = 2;
 
 
@@ -220,16 +220,12 @@ function main() {
 	gl.bufferData(gl.ARRAY_BUFFER, drawIndicies, gl.STATIC_DRAW);
 	
 	// fill texture with pixels
-	var positionTexData = new Uint8Array([
-		0, 0, 0,
-		64, 64, 0,
-		128, 128, 0,
-		192, 192, 0,
-		255, 255, 0,
-	]);
+	//var positionTexData = [...Array(n_particles).keys()].map(pos => [pos/(n_particles-1.), pos/(n_particles-1.), 0]).flat();
+	var positionTexData = [...Array(n_particles).keys()].map(pos => [0.25+0.5*Math.random(), 0.25+0.5*Math.random(), 0]).flat();
+	positionTexData = new Float32Array(positionTexData);
 	// Fill data into a texture
 	gl.bindTexture(gl.TEXTURE_2D, prevStateTexture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, n_particles, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, positionTexData);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, n_particles, 1, 0, gl.RGB, gl.FLOAT, positionTexData);
 	// set the filtering so we don't need mips and it's not filtered
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -238,22 +234,18 @@ function main() {
 	
 	// Create a texture to render to
 	gl.bindTexture(gl.TEXTURE_2D, nextStateTexture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, n_particles, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, n_particles, 1, 0, gl.RGBA, gl.FLOAT, null);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 	
 	// Create a texture for velocity
-	var velocityTexData = new Uint8Array([
-		0, 192, 0,
-		64, 255, 0,
-		128, 0, 0,
-		192, 64, 0,
-		255, 128, 0,
-	]);
+	//var velocityTexData = [...Array(n_particles).keys()].map(vel => [0.5*vel/(n_particles-1.)+0.25, 0.75-0.5*vel/(n_particles-1.), 0]).flat();
+	velocityTexData = [...Array(n_particles).keys()].map(vel => [0.25+0.5*Math.random(), 0.25+0.5*Math.random(), 0]).flat();
+	velocityTexData = new Float32Array(velocityTexData);
 	gl.bindTexture(gl.TEXTURE_2D, velocityTexture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, n_particles, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, velocityTexData);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, n_particles, 1, 0, gl.RGB, gl.FLOAT, velocityTexData);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -373,7 +365,6 @@ function main() {
 		var dt = time - then;
 		then = time;
 		var loopFraction = (time % loopLength)/parseFloat(loopLength);
-		
 		
 		stateCompute(dt);
 		stateReport(true);

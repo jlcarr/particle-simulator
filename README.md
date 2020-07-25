@@ -41,6 +41,13 @@ The number of inputs is given by: ![vhw+u](https://render.githubusercontent.com/
 The number of outputs is given by:  ![hwc](https://render.githubusercontent.com/render/math?math=hwc)  
 The number of parallel threads is given by: ![hw](https://render.githubusercontent.com/render/math?math=hw)  
 
+### Texture Floats
+https://developer.mozilla.org/en-US/docs/Web/API/OES_texture_float
+In order to get the precision required for particle dynamics simulations floating point numbers are needed over unsigned integers.  
+Rather than have the colorspace in [0,127] integers, it is preferable to have it in [0,1] rationals.  
+The [0,1] colorspace is then converted to [-1,1] clipspace for computations.  
+Thankfully WebGL has a standard floating point number extension that allows for this.  
+
 ## WebGL resources
 ### Complete Guides
 https://webglfundamentals.org  
