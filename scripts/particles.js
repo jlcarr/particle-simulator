@@ -42,7 +42,7 @@ let positionComputeFShader = `
 	}
 `;
 
-// Boundary Velocity Compute
+// Boundary Collision Compute
 let boundaryComputeVShader = `
 	attribute vec4 screenquad;
 
@@ -181,15 +181,15 @@ function main() {
 	var computeScreenLocation = gl.getAttribLocation(positionComputeProgram, "screenquad");
 	var computeTexcoordLocation = gl.getAttribLocation(positionComputeProgram, "texcoord");
 	
-	// Collision Compute Program: compilation
+	// Boundary Compute Program: compilation
 	boundaryComputeProgram = buildShaderProgram(boundaryComputeVShader, boundaryComputeFShader);
 	gl.useProgram(positionComputeProgram);
-	//  Collision Compute Program: uniform indicies
+	//  Boundary Compute Program: uniform indicies
 	var boundaryTLocation = gl.getUniformLocation(boundaryComputeProgram, "dt");
 	var boundaryTextureLocation = gl.getUniformLocation(boundaryComputeProgram, "position_tex");
 	var boundaryVelocityLocation = gl.getUniformLocation(boundaryComputeProgram, "velocity_tex");
 	var boundaryResolutionLocation = gl.getUniformLocation(boundaryComputeProgram, "texture_size");
-	//  Collision Compute Program: attributes indicies
+	//  Boundary Compute Program: attributes indicies
 	var boundaryScreenLocation = gl.getAttribLocation(boundaryComputeProgram, "screenquad");
 	var boundaryTexcoordLocation = gl.getAttribLocation(boundaryComputeProgram, "texcoord");
 	

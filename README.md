@@ -20,6 +20,30 @@ Parameters:
    3. Wall collisions
 4. Draw the particles from their data in texture
 
+### Dynamics Computations
+#### Statement Of The Problem
+https://en.wikipedia.org/wiki/N-body_simulation  
+https://en.wikipedia.org/wiki/Newton%27s_law_of_universal_gravitation  
+https://en.wikipedia.org/wiki/Coulomb%27s_law  
+https://en.wikipedia.org/wiki/Gravitational_constant  
+https://en.wikipedia.org/wiki/Coulomb_constant  
+The equations of motion are simple:  
+![\frac{\mathrm{d} \vec{x}_i}{\mathrm{d} t} = \vec{v}_i](https://render.githubusercontent.com/render/math?math=%5Cfrac%7B%5Cmathrm%7Bd%7D%20%5Cvec%7Bx%7D_i%7D%7B%5Cmathrm%7Bd%7D%20t%7D%20%3D%20%5Cvec%7Bv%7D_i)  
+![\frac{\mathrm{d} \vec{v}_i}{\mathrm{d} t} = \sum_{j \neq i} \left (  \frac{k_e q_j q_i-G m_j m_i}{m_i \left \| \vec{x}_i - \vec{x}_j \right \| ^3} \right ) \left ( \vec{x}_i - \vec{x}_j \right )](https://render.githubusercontent.com/render/math?math=%5Cfrac%7B%5Cmathrm%7Bd%7D%20%5Cvec%7Bv%7D_i%7D%7B%5Cmathrm%7Bd%7D%20t%7D%20%3D%20%5Csum_%7Bj%20%5Cneq%20i%7D%20%5Cleft%20(%20%20%5Cfrac%7Bk_e%20q_j%20q_i-G%20m_j%20m_i%7D%7Bm_i%20%5Cleft%20%5C%7C%20%5Cvec%7Bx%7D_i%20-%20%5Cvec%7Bx%7D_j%20%5Cright%20%5C%7C%20%5E3%7D%20%5Cright%20)%20%5Cleft%20(%20%5Cvec%7Bx%7D_i%20-%20%5Cvec%7Bx%7D_j%20%5Cright%20))  
+Where:  
+- ![\vec{x}_i](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bx%7D_i): is the positon vector of particle i
+- ![\vec{v}_i](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bv%7D_i): is the velocity vector of particle i
+- ![m_i](https://render.githubusercontent.com/render/math?math=m_i): is the mass of particle i
+- ![q_i](https://render.githubusercontent.com/render/math?math=q_i): is the electric charge of particle i
+- ![G](https://render.githubusercontent.com/render/math?math=G): is the universal gravitational constant
+- ![k_e](https://render.githubusercontent.com/render/math?math=k_e): is Coulomb's constant
+
+### Numerical Solutions
+https://en.wikipedia.org/wiki/Numerical_methods_for_ordinary_differential_equations  
+https://en.wikipedia.org/wiki/Euler_method  
+Since the equations of motion are a system of first order ordinary differential equations, they can be solved numerically in real time using numerical integration techniques  
+The most basic method is the Euler method
+
 ### Position (Clip) Space Topology
 https://en.wikipedia.org/wiki/Surface_(topology)  
 There are several easy topologies of the position space on can encode  
