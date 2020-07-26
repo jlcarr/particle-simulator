@@ -7,15 +7,6 @@ let shaderProgram;
 
 window.addEventListener("load", main, false);
 
-/*
-texture: current_state
-program: draw current state to bottom rect
-
-program: draw particles from state
-
-RG[0,1]^2 -> clipspace[-1,1]^2
-*/
-
 /**** Shader Programs ****/
 // Position State Compute
 let positionComputeVShader = `
@@ -51,8 +42,8 @@ let positionComputeFShader = `
 	}
 `;
 
-// Collision Velocity Compute
-let collisionComputeVShader = `
+// Boundary Velocity Compute
+let boundaryComputeVShader = `
 	attribute vec4 screenquad;
 
 	attribute vec2 texcoord;
@@ -63,7 +54,7 @@ let collisionComputeVShader = `
 		texcoord_passthru = texcoord;
 	}
 `;
-let collisionComputeFShader = `
+let boundaryComputeFShader = `
 	precision mediump float;
 
 	uniform float dt;
@@ -102,7 +93,7 @@ let drawVShader = `
 	void main(void) {
 		vec4 state = stateSelect(state_ptr, n_particles, particle_index);
 		gl_Position = vec4(state.xy, 0.0, 1.0);
-		gl_PointSize = 10.0 + 20.0*particle_index/float(n_particles-1); //- 2.0*particle_index;//
+		gl_PointSize = 10.0 + 20.0*particle_index/float(n_particles-1);
 	}
 `;
 let drawFShader = `
@@ -160,6 +151,7 @@ function main() {
 	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 	
 	
+	
 	/**** Initial JS Setup ****/
 	// Setup data
 	var n_dim = 2;
@@ -190,16 +182,16 @@ function main() {
 	var computeTexcoordLocation = gl.getAttribLocation(positionComputeProgram, "texcoord");
 	
 	// Collision Compute Program: compilation
-	collisionComputeProgram = buildShaderProgram(collisionComputeVShader, collisionComputeFShader);
+	boundaryComputeProgram = buildShaderProgram(boundaryComputeVShader, boundaryComputeFShader);
 	gl.useProgram(positionComputeProgram);
 	//  Collision Compute Program: uniform indicies
-	var collisionTLocation = gl.getUniformLocation(collisionComputeProgram, "dt");
-	var collisionTextureLocation = gl.getUniformLocation(collisionComputeProgram, "position_tex");
-	var collisionVelocityLocation = gl.getUniformLocation(collisionComputeProgram, "velocity_tex");
-	var collisionResolutionLocation = gl.getUniformLocation(collisionComputeProgram, "texture_size");
+	var boundaryTLocation = gl.getUniformLocation(boundaryComputeProgram, "dt");
+	var boundaryTextureLocation = gl.getUniformLocation(boundaryComputeProgram, "position_tex");
+	var boundaryVelocityLocation = gl.getUniformLocation(boundaryComputeProgram, "velocity_tex");
+	var boundaryResolutionLocation = gl.getUniformLocation(boundaryComputeProgram, "texture_size");
 	//  Collision Compute Program: attributes indicies
-	var collisionScreenLocation = gl.getAttribLocation(collisionComputeProgram, "screenquad");
-	var collisionTexcoordLocation = gl.getAttribLocation(collisionComputeProgram, "texcoord");
+	var boundaryScreenLocation = gl.getAttribLocation(boundaryComputeProgram, "screenquad");
+	var boundaryTexcoordLocation = gl.getAttribLocation(boundaryComputeProgram, "texcoord");
 	
 	// Draw Program: compilation
 	drawProgram = buildShaderProgram(drawVShader, drawFShader);
@@ -365,11 +357,19 @@ function main() {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		// Draw the geometry.
 		gl.drawArrays(gl.TRIANGLES, 0, 3*n_tris);
+		
+		// Swap Frame Buffers
+		var tempFB = prevPositionFB;
+		prevPositionFB = nextPositionFB;
+		nextPositionFB = tempFB;
+		var tempStateTexture = prevPositionTexture;
+		prevPositionTexture = nextPositionTexture;
+		nextPositionTexture = tempStateTexture;
 	}
 	
-	function collisionCompute(dt){
+	function boundaryCompute(dt){
 		// Use the positionCompute program
-		gl.useProgram(collisionComputeProgram);
+		gl.useProgram(boundaryComputeProgram);
 		
 		// render to our targetTexture by binding the framebuffer
 		gl.bindFramebuffer(gl.FRAMEBUFFER, nextVelocityFB);
@@ -377,13 +377,13 @@ function main() {
 		
 		// Turn on the position attribute
 		gl.bindBuffer(gl.ARRAY_BUFFER, statePositionBuffer);
-		gl.enableVertexAttribArray(collisionScreenLocation);
-		gl.vertexAttribPointer(collisionScreenLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(boundaryScreenLocation);
+		gl.vertexAttribPointer(boundaryScreenLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
 		
 		// Turn on the texcoord attribute
 		gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
-		gl.enableVertexAttribArray(collisionTexcoordLocation);
-		gl.vertexAttribPointer(collisionTexcoordLocation, 2, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(boundaryTexcoordLocation);
+		gl.vertexAttribPointer(boundaryTexcoordLocation, 2, gl.FLOAT, false, 0, 0);
 		
 		// Tell the shader to use texture unit 0 for u_texture
 		gl.activeTexture(gl.TEXTURE0);
@@ -391,18 +391,26 @@ function main() {
 		gl.activeTexture(gl.TEXTURE1);
 		gl.bindTexture(gl.TEXTURE_2D, prevVelocityTexture);
 		gl.activeTexture(gl.TEXTURE0);
-		gl.uniform1i(collisionTextureLocation, 0);
-		gl.uniform1i(collisionVelocityLocation, 1);
-		gl.uniform2f(collisionResolutionLocation, n_particles, 0);
+		gl.uniform1i(boundaryTextureLocation, 0);
+		gl.uniform1i(boundaryVelocityLocation, 1);
+		gl.uniform2f(boundaryResolutionLocation, n_particles, 0);
 		
 		// Set Uniforms
-		gl.uniform1f(collisionTLocation, dt);
+		gl.uniform1f(boundaryTLocation, dt);
 		
 		// Clear the view
 		gl.clearColor(1, 1, 1, 1);  // Clear the attachment(s).
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		// Draw the geometry.
 		gl.drawArrays(gl.TRIANGLES, 0, 3*n_tris);
+		
+		// Swap Frame Buffers
+		var tempFB = prevVelocityFB;
+		prevVelocityFB = nextVelocityFB;
+		nextVelocityFB = tempFB;
+		var tempStateTexture = prevVelocityTexture;
+		prevVelocityTexture = nextVelocityTexture;
+		nextVelocityTexture = tempStateTexture;
 	}
 
 	function stateReport(clear){
@@ -472,27 +480,10 @@ function main() {
 		then = time;
 		var loopFraction = (time % loopLength)/parseFloat(loopLength);
 		
-		collisionCompute(dt);
+		boundaryCompute(dt);
 		positionCompute(dt);
 		stateReport(true);
 		stateDraw(false);
-		
-		// Swap buffers
-		// Position
-		var tempFB = prevPositionFB;
-		prevPositionFB = nextPositionFB;
-		nextPositionFB = tempFB;
-		var tempStateTexture = prevPositionTexture;
-		prevPositionTexture = nextPositionTexture;
-		nextPositionTexture = tempStateTexture;
-		
-		// Velocity
-		var tempFB = prevVelocityFB;
-		prevVelocityFB = nextVelocityFB;
-		nextVelocityFB = tempFB;
-		var tempStateTexture = prevVelocityTexture;
-		prevVelocityTexture = nextVelocityTexture;
-		nextVelocityTexture = tempStateTexture;
 		
 		requestAnimationFrame(drawFrame);
 	}
