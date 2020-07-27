@@ -21,7 +21,7 @@ Parameters:
 4. Draw the particles from their data in texture
 
 ### Dynamics Computations
-#### Statement Of The Problem
+#### N-Body Simulations
 https://en.wikipedia.org/wiki/N-body_simulation  
 https://en.wikipedia.org/wiki/Newton%27s_law_of_universal_gravitation  
 https://en.wikipedia.org/wiki/Coulomb%27s_law  
@@ -31,18 +31,24 @@ The equations of motion are simple:
 ![\frac{\mathrm{d} \vec{x}_i}{\mathrm{d} t} = \vec{v}_i](https://render.githubusercontent.com/render/math?math=%5Cfrac%7B%5Cmathrm%7Bd%7D%20%5Cvec%7Bx%7D_i%7D%7B%5Cmathrm%7Bd%7D%20t%7D%20%3D%20%5Cvec%7Bv%7D_i)  
 ![\frac{\mathrm{d} \vec{v}_i}{\mathrm{d} t} = \sum_{j \neq i} \left (  \frac{k_e q_j q_i-G m_j m_i}{m_i \left \| \vec{x}_i - \vec{x}_j \right \| ^3} \right ) \left ( \vec{x}_i - \vec{x}_j \right )](https://render.githubusercontent.com/render/math?math=%5Cfrac%7B%5Cmathrm%7Bd%7D%20%5Cvec%7Bv%7D_i%7D%7B%5Cmathrm%7Bd%7D%20t%7D%20%3D%20%5Csum_%7Bj%20%5Cneq%20i%7D%20%5Cleft%20(%20%20%5Cfrac%7Bk_e%20q_j%20q_i-G%20m_j%20m_i%7D%7Bm_i%20%5Cleft%20%5C%7C%20%5Cvec%7Bx%7D_i%20-%20%5Cvec%7Bx%7D_j%20%5Cright%20%5C%7C%20%5E3%7D%20%5Cright%20)%20%5Cleft%20(%20%5Cvec%7Bx%7D_i%20-%20%5Cvec%7Bx%7D_j%20%5Cright%20))  
 Where:  
-- ![\vec{x}_i](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bx%7D_i): is the positon vector of particle i
-- ![\vec{v}_i](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bv%7D_i): is the velocity vector of particle i
-- ![m_i](https://render.githubusercontent.com/render/math?math=m_i): is the mass of particle i
-- ![q_i](https://render.githubusercontent.com/render/math?math=q_i): is the electric charge of particle i
-- ![G](https://render.githubusercontent.com/render/math?math=G): is the universal gravitational constant
-- ![k_e](https://render.githubusercontent.com/render/math?math=k_e): is Coulomb's constant
+- ![\vec{x}_i](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bx%7D_i) is the positon vector of particle i
+- ![\vec{v}_i](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bv%7D_i) is the velocity vector of particle i
+- ![m_i](https://render.githubusercontent.com/render/math?math=m_i) is the mass of particle i
+- ![q_i](https://render.githubusercontent.com/render/math?math=q_i) is the electric charge of particle i
+- ![G](https://render.githubusercontent.com/render/math?math=G) is the universal gravitational constant
+- ![k_e](https://render.githubusercontent.com/render/math?math=k_e) is Coulomb's constant
 
-### Numerical Solutions
+#### Numerical Solutions
 https://en.wikipedia.org/wiki/Numerical_methods_for_ordinary_differential_equations  
 https://en.wikipedia.org/wiki/Euler_method  
 Since the equations of motion are a system of first order ordinary differential equations, they can be solved numerically in real time using numerical integration techniques  
-The most basic method is the Euler method
+The most basic method is the Euler method:  
+
+#### Collisions
+https://en.wikipedia.org/wiki/Collision  
+https://en.wikipedia.org/wiki/Elastic_collision  
+Collisions between particles may either be perfectly elastic, in which no energy is lost, or inelastic in which some energy is lost as heat.  
+For the purposes of this simulation perfectly elastic collisions shall be used:  
 
 ### Position (Clip) Space Topology
 https://en.wikipedia.org/wiki/Surface_(topology)  
@@ -67,7 +73,7 @@ Given that WebGL is designed for 3d graphics rendering, one must jump through a 
 - Therefore the vertex shader essentially acts as a passthrough to the fragment shader.
 - The fragment shader performs the computation.
 - A fun way to think about the use of textures for encoding vectors of state is how the dynamics in clip space map to colorspace.
-### Parallelism vs. Output size
+### Parallelism vs. Output Size
 For a given WebGL program using he above approach the parallelism can be described as follows  
 Parameters:
 - **h**: The height of the output texture in the framebuffer.
@@ -81,13 +87,13 @@ The number of outputs is given by:  ![hwc](https://render.githubusercontent.com/
 The number of parallel threads is given by: ![hw](https://render.githubusercontent.com/render/math?math=hw)  
 
 ### Floating-Point Textures
-https://developer.mozilla.org/en-US/docs/Web/API/OES_texture_float
+https://developer.mozilla.org/en-US/docs/Web/API/OES_texture_float  
 In order to get the precision required for particle dynamics simulations floating point numbers are needed over unsigned integers.  
 Rather than have the colorspace in [0,127] integers, it is preferable to have it in [0,1] rationals.  
 The [0,1] colorspace is then converted to [-1,1] clipspace for computations.  
 Thankfully WebGL has a standard floating point number extension that allows for this.  
 
-## WebGL resources
+## WebGL Resources
 ### Complete Guides
 https://webglfundamentals.org  
 http://learnwebgl.brown37.net  

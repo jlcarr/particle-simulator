@@ -42,6 +42,69 @@ let positionComputeFShader = `
 	}
 `;
 
+// Interparticle Collision Compute
+let collisionComputeVShader = `
+	attribute vec4 screenquad;
+
+	attribute vec2 texcoord;
+	varying vec2 texcoord_passthru;
+
+	attribute vec2 co_texcoord;
+	varying vec2 co_texcoord_passthru;
+
+	void main() {
+		gl_Position = screenquad;
+		texcoord_passthru = texcoord;
+		co_texcoord_passthru = co_texcoord;
+	}
+`;
+let collisionComputeFShader = `
+	precision mediump float;
+
+	uniform float dt;
+
+	// State texture
+	uniform vec2 texture_size;
+	varying vec2 texcoord_passthru;
+	varying vec2 co_texcoord_passthru;
+	// Positions
+	uniform sampler2D position_tex;
+	// Velocities
+	uniform sampler2D velocity_tex;
+	// Colliding particles
+	uniform float radius;
+
+	void main() {
+		// Particle State
+		vec4 position = texture2D(position_tex, texcoord_passthru);
+		vec4 velocity = 2.*texture2D(velocity_tex, texcoord_passthru)-1.;
+		// Co-Particle State
+		vec4 co_position = texture2D(position_tex, co_texcoord_passthru);
+		vec4 co_velocity = 2.*texture2D(velocity_tex, co_texcoord_passthru)-1.;
+		
+		// Relative position
+		vec4 position_diff = co_position-position;
+		float distance = length(position_diff.xy);
+		// Relative velocity
+		vec4 velocity_diff = co_velocity-velocity;
+		float speed = length(velocity_diff.xy);
+		
+		// Check if this is the particle itself (if so passthrough the velocity)
+		/* if (co_texcoord_passthru.x > texcoord_passthru.x-0.5 && co_texcoord_passthru.x < texcoord_passthru.x+0.5){
+			gl_FragColor = 0.5+0.5*velocity;
+		}*/
+		if (distance < 0.01) gl_FragColor = 0.5+0.5*velocity; //TODO: remove and clean this up
+		// Check if the particles are in collision range
+		else if (distance < 2.*radius && distance > 0.01){
+			// Calculate Impulse
+			vec2 impulse = -abs(dot(position_diff.xy,velocity_diff.xy)/(distance*distance))*position_diff.xy; // TODO: add masses into computation
+			gl_FragColor = vec4(impulse,0,0);
+		}
+		// Otherwise this particle has no contribution
+		else gl_FragColor = vec4(0);
+	}
+`;
+
 // Boundary Collision Compute
 let boundaryComputeVShader = `
 	attribute vec4 screenquad;
@@ -101,11 +164,11 @@ let drawFShader = `
 
 	void main(void) {
 		vec2 fragmentPosition = 2.0*gl_PointCoord - 1.0;
-		float distanceSq = dot(fragmentPosition, fragmentPosition);
+		float distance = length(fragmentPosition);
 		float alpha = 1.0;
 		vec3 color = vec3(0, 0, 0);
-		if (distanceSq > 1.0) alpha = 0.0; // || distanceSq < 0.64
-		if (distanceSq < 0.64) color = vec3(1, 1, 1);
+		if (distance > 1.0) alpha = 0.0; // || distanceSq < 0.64
+		if (distance < 0.8) color = vec3(1, 1, 1);
 		gl_FragColor = vec4(color, alpha);
 	}
 `;
@@ -155,7 +218,7 @@ function main() {
 	/**** Initial JS Setup ****/
 	// Setup data
 	var n_dim = 2;
-	var n_particles = 10;
+	var n_particles = 2;
 	var n_tris = 2;
 
 
@@ -173,20 +236,34 @@ function main() {
 	positionComputeProgram = buildShaderProgram(positionComputeVShader, positionComputeFShader);
 	gl.useProgram(positionComputeProgram);
 	// Position Compute Program: uniform indicies
-	var computeTLocation = gl.getUniformLocation(positionComputeProgram, "dt");
-	var computeTextureLocation = gl.getUniformLocation(positionComputeProgram, "position_tex");
-	var computeVelocityLocation = gl.getUniformLocation(positionComputeProgram, "velocity_tex");
-	var computeResolutionLocation = gl.getUniformLocation(positionComputeProgram, "texture_size");
+	var positionTLocation = gl.getUniformLocation(positionComputeProgram, "dt");
+	var positionPositionLocation = gl.getUniformLocation(positionComputeProgram, "position_tex");
+	var positionVelocityLocation = gl.getUniformLocation(positionComputeProgram, "velocity_tex");
+	var positionResolutionLocation = gl.getUniformLocation(positionComputeProgram, "texture_size");
 	// Position Compute Program: attributes indicies
-	var computeScreenLocation = gl.getAttribLocation(positionComputeProgram, "screenquad");
-	var computeTexcoordLocation = gl.getAttribLocation(positionComputeProgram, "texcoord");
+	var positionScreenLocation = gl.getAttribLocation(positionComputeProgram, "screenquad");
+	var positionTexcoordLocation = gl.getAttribLocation(positionComputeProgram, "texcoord");
 	
+	// Collision Compute Program: compilation
+	collisionComputeProgram = buildShaderProgram(collisionComputeVShader, collisionComputeFShader);
+	gl.useProgram(collisionComputeProgram);
+	//  Boundary Compute Program: uniform indicies
+	//var collisionTLocation = gl.getUniformLocation(collisionComputeProgram, "dt");
+	var collisionPositionLocation = gl.getUniformLocation(collisionComputeProgram, "position_tex");
+	var collisionVelocityLocation = gl.getUniformLocation(collisionComputeProgram, "velocity_tex");
+	var collisionResolutionLocation = gl.getUniformLocation(collisionComputeProgram, "texture_size");
+	var collisionRadiusLocation = gl.getUniformLocation(collisionComputeProgram, "radius");
+	//  Boundary Compute Program: attributes indicies
+	var collisionScreenLocation = gl.getAttribLocation(collisionComputeProgram, "screenquad");
+	var collisionTexcoordLocation = gl.getAttribLocation(collisionComputeProgram, "texcoord");
+	var collisionCoTexcoordLocation = gl.getAttribLocation(collisionComputeProgram, "co_texcoord");
+
 	// Boundary Compute Program: compilation
 	boundaryComputeProgram = buildShaderProgram(boundaryComputeVShader, boundaryComputeFShader);
 	gl.useProgram(positionComputeProgram);
 	//  Boundary Compute Program: uniform indicies
 	var boundaryTLocation = gl.getUniformLocation(boundaryComputeProgram, "dt");
-	var boundaryTextureLocation = gl.getUniformLocation(boundaryComputeProgram, "position_tex");
+	var boundaryPositionLocation = gl.getUniformLocation(boundaryComputeProgram, "position_tex");
 	var boundaryVelocityLocation = gl.getUniformLocation(boundaryComputeProgram, "velocity_tex");
 	var boundaryResolutionLocation = gl.getUniformLocation(boundaryComputeProgram, "texture_size");
 	//  Boundary Compute Program: attributes indicies
@@ -198,16 +275,19 @@ function main() {
 	gl.useProgram(drawProgram);
 	// Draw Program: uniform indicies
 	var drawNLocation = gl.getUniformLocation(drawProgram, "n_particles");
-	var drawTextureLocation = gl.getUniformLocation(drawProgram, "state_ptr");
+	var drawPositionLocation = gl.getUniformLocation(drawProgram, "state_ptr");
 	// Draw Program: attributes indicies
 	var drawIndexLocation = gl.getAttribLocation(drawProgram, "particle_index");
 
 	
 	/**** Initial Shared Setup ****/
 	// Shared: buffer allocations and indicies
-	var statePositionBuffer = gl.createBuffer();
-	var reportPositionBuffer = gl.createBuffer();
+	var screenBuffer = gl.createBuffer();
+	var reportScreenBuffer = gl.createBuffer();
+	var pairScreenBuffer = gl.createBuffer();
 	var texcoordBuffer = gl.createBuffer();
+	var pairTexcoordBuffer = gl.createBuffer();
+	var pairCoTexcoordBuffer = gl.createBuffer();
 	var drawIndexBuffer = gl.createBuffer();
 	// Shared: texture allocations and indicies
 	var prevPositionTexture = gl.createTexture();
@@ -223,7 +303,7 @@ function main() {
 
 	/**** Initialize Buffers ****/
 	// Create a buffer for compute rect positions
-	var stateCoords = new Float32Array([
+	var screenCoords = new Float32Array([
 		-1, -1,
 		1, -1,
 		-1, 1,
@@ -231,11 +311,11 @@ function main() {
 		1, -1,
 		1, 1,
 	]);
-	gl.bindBuffer(gl.ARRAY_BUFFER, statePositionBuffer);
-	gl.bufferData(gl.ARRAY_BUFFER, stateCoords, gl.STATIC_DRAW);
+	gl.bindBuffer(gl.ARRAY_BUFFER, screenBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, screenCoords, gl.STATIC_DRAW);
 	
 	// Create a buffer for positions for the report rect
-	var reportCoords = new Float32Array([
+	var reportScreenCoords = new Float32Array([
 		-1, -1,
 		1, -1,
 		-1, -0.8,
@@ -243,8 +323,21 @@ function main() {
 		1, -1,
 		1, -0.8,
 	]);
-	gl.bindBuffer(gl.ARRAY_BUFFER, reportPositionBuffer);
-	gl.bufferData(gl.ARRAY_BUFFER, reportCoords, gl.STATIC_DRAW);
+	gl.bindBuffer(gl.ARRAY_BUFFER, reportScreenBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, reportScreenCoords, gl.STATIC_DRAW);
+	
+	// Create a buffer for rect pairs
+	var pairScreenCoords = [...Array(n_particles).keys()].map(particle_index => [
+		-1, -1,
+		1, -1,
+		-1, 1,
+		-1, 1,
+		1, -1,
+		1, 1,
+	]).flat();
+	pairScreenCoords = new Float32Array(pairScreenCoords);
+	gl.bindBuffer(gl.ARRAY_BUFFER, pairScreenBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, pairScreenCoords, gl.STATIC_DRAW);
 
 	// Provide matching texture coordinates for the rectangle.
 	var texCoords = new Float32Array([
@@ -257,6 +350,32 @@ function main() {
 	]);
 	gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+
+	// Provide matching texture coordinates for the rectangle.
+	var pairTexCoords = [...Array(n_particles).keys()].map(particle_index => [
+		0, 0,
+		1, 0,
+		0, 1,
+		0, 1,
+		1, 0,
+		1, 1,
+	]).flat();
+	pairTexCoords = new Float32Array(pairTexCoords);
+	gl.bindBuffer(gl.ARRAY_BUFFER, pairTexcoordBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, pairTexCoords, gl.STATIC_DRAW);
+	
+	// Provide matching texture coordinates for the rectangle.
+	var pairCoTexCoords = [...Array(n_particles).keys()].map(particle_index => [
+		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
+		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
+		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
+		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
+		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
+		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
+	]).flat();
+	pairCoTexCoords = new Float32Array(pairCoTexCoords);
+	gl.bindBuffer(gl.ARRAY_BUFFER, pairCoTexcoordBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, pairCoTexCoords, gl.STATIC_DRAW);
 	
 	// Provide matching texture coordinates for the rectangle.
 	var drawIndicies = new Float32Array([...Array(n_particles).keys()]);
@@ -265,7 +384,7 @@ function main() {
 	
 	// fill texture with pixels
 	//var positionTexData = [...Array(n_particles).keys()].map(pos => [pos/(n_particles-1.), pos/(n_particles-1.), 0]).flat();
-	var positionTexData = [...Array(n_particles).keys()].map(pos => [0.25+0.5*Math.random(), 0.25+0.5*Math.random(), 0]).flat();
+	var positionTexData = [...Array(n_particles).keys()].map(pos => [Math.random(), Math.random(), 0]).flat();
 	positionTexData = new Float32Array(positionTexData);
 	// Fill data into a texture
 	gl.bindTexture(gl.TEXTURE_2D, prevPositionTexture);
@@ -330,14 +449,14 @@ function main() {
 		gl.viewport(0, 0, n_particles, 1);  // Tell WebGL how to convert from clip space to pixels
 		
 		// Turn on the position attribute
-		gl.bindBuffer(gl.ARRAY_BUFFER, statePositionBuffer);
-		gl.enableVertexAttribArray(computeScreenLocation);
-		gl.vertexAttribPointer(computeScreenLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
+		gl.bindBuffer(gl.ARRAY_BUFFER, screenBuffer);
+		gl.enableVertexAttribArray(positionScreenLocation);
+		gl.vertexAttribPointer(positionScreenLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
 		
 		// Turn on the texcoord attribute
 		gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
-		gl.enableVertexAttribArray(computeTexcoordLocation);
-		gl.vertexAttribPointer(computeTexcoordLocation, 2, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(positionTexcoordLocation);
+		gl.vertexAttribPointer(positionTexcoordLocation, 2, gl.FLOAT, false, 0, 0);
 		
 		// Tell the shader to use texture unit 0 for u_texture
 		gl.activeTexture(gl.TEXTURE0);
@@ -345,12 +464,12 @@ function main() {
 		gl.activeTexture(gl.TEXTURE1);
 		gl.bindTexture(gl.TEXTURE_2D, prevVelocityTexture);
 		gl.activeTexture(gl.TEXTURE0);
-		gl.uniform1i(computeTextureLocation, 0);
-		gl.uniform1i(computeVelocityLocation, 1);
-		gl.uniform2f(computeResolutionLocation, n_particles, 0);
+		gl.uniform1i(positionPositionLocation, 0);
+		gl.uniform1i(positionVelocityLocation, 1);
+		gl.uniform2f(positionResolutionLocation, n_particles, 0);
 		
 		// Set Uniforms
-		gl.uniform1f(computeTLocation, dt);
+		gl.uniform1f(positionTLocation, dt);
 		
 		// Clear the view
 		gl.clearColor(1, 1, 1, 1);  // Clear the attachment(s).
@@ -367,6 +486,61 @@ function main() {
 		nextPositionTexture = tempStateTexture;
 	}
 	
+	function collisionCompute(dt){
+		// Use the Collision Compute program
+		gl.useProgram(collisionComputeProgram);
+		gl.blendFunc(gl.ONE, gl.ONE);
+		
+		// render to our targetTexture by binding the framebuffer
+		gl.bindFramebuffer(gl.FRAMEBUFFER, nextVelocityFB);
+		gl.viewport(0, 0, n_particles, 1);  // Tell WebGL how to convert from clip space to pixels
+		
+		// Turn on the position attribute
+		gl.bindBuffer(gl.ARRAY_BUFFER, pairScreenBuffer);
+		gl.enableVertexAttribArray(collisionScreenLocation);
+		gl.vertexAttribPointer(collisionScreenLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
+		
+		// Turn on the texcoord attribute
+		gl.bindBuffer(gl.ARRAY_BUFFER, pairTexcoordBuffer);
+		gl.enableVertexAttribArray(collisionTexcoordLocation);
+		gl.vertexAttribPointer(collisionTexcoordLocation, 2, gl.FLOAT, false, 0, 0);
+		// And for the pairs
+		gl.bindBuffer(gl.ARRAY_BUFFER, pairCoTexcoordBuffer);
+		gl.enableVertexAttribArray(collisionCoTexcoordLocation);
+		gl.vertexAttribPointer(collisionCoTexcoordLocation, 2, gl.FLOAT, false, 0, 0);
+		
+		// Tell the shader to use texture unit 0 for u_texture
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, prevPositionTexture);
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, prevVelocityTexture);
+		gl.activeTexture(gl.TEXTURE0);
+		gl.uniform1i(collisionPositionLocation, 0);
+		gl.uniform1i(collisionVelocityLocation, 1);
+		gl.uniform2f(collisionResolutionLocation, n_particles, 0);
+		
+		// Set Uniforms
+		//gl.uniform1f(collisionTLocation, dt);
+		gl.uniform1f(collisionRadiusLocation, 0.1);
+		
+		// Clear the view
+		gl.clearColor(0, 0, 0, 0);  // Clear the attachment(s).
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		// Draw the geometry.
+		gl.drawArrays(gl.TRIANGLES, 0, 3*n_tris*n_particles);
+		
+		// Swap Frame Buffers
+		var tempFB = prevVelocityFB;
+		prevVelocityFB = nextVelocityFB;
+		nextVelocityFB = tempFB;
+		var tempStateTexture = prevVelocityTexture;
+		prevVelocityTexture = nextVelocityTexture;
+		nextVelocityTexture = tempStateTexture;
+		
+		//Reset blendfunc
+		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	}
+
 	function boundaryCompute(dt){
 		// Use the positionCompute program
 		gl.useProgram(boundaryComputeProgram);
@@ -376,7 +550,7 @@ function main() {
 		gl.viewport(0, 0, n_particles, 1);  // Tell WebGL how to convert from clip space to pixels
 		
 		// Turn on the position attribute
-		gl.bindBuffer(gl.ARRAY_BUFFER, statePositionBuffer);
+		gl.bindBuffer(gl.ARRAY_BUFFER, screenBuffer);
 		gl.enableVertexAttribArray(boundaryScreenLocation);
 		gl.vertexAttribPointer(boundaryScreenLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
 		
@@ -391,7 +565,7 @@ function main() {
 		gl.activeTexture(gl.TEXTURE1);
 		gl.bindTexture(gl.TEXTURE_2D, prevVelocityTexture);
 		gl.activeTexture(gl.TEXTURE0);
-		gl.uniform1i(boundaryTextureLocation, 0);
+		gl.uniform1i(boundaryPositionLocation, 0);
 		gl.uniform1i(boundaryVelocityLocation, 1);
 		gl.uniform2f(boundaryResolutionLocation, n_particles, 0);
 		
@@ -422,7 +596,7 @@ function main() {
 		gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 		
 		// Turn on the position attribute
-		gl.bindBuffer(gl.ARRAY_BUFFER, reportPositionBuffer);
+		gl.bindBuffer(gl.ARRAY_BUFFER, reportScreenBuffer);
 		gl.enableVertexAttribArray(reportPositionLocation);
 		gl.vertexAttribPointer(reportPositionLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
 		
@@ -458,7 +632,7 @@ function main() {
 		
 		// Tell the shader to use texture unit 0 for u_texture
 		gl.bindTexture(gl.TEXTURE_2D, nextPositionTexture);
-		gl.uniform1i(drawTextureLocation, 0);
+		gl.uniform1i(drawPositionLocation, 0);
 		gl.uniform1i(drawNLocation, n_particles);
 		
 		if (clear){ // Clear the view
@@ -480,6 +654,7 @@ function main() {
 		then = time;
 		var loopFraction = (time % loopLength)/parseFloat(loopLength);
 		
+		//collisionCompute(dt);
 		boundaryCompute(dt);
 		positionCompute(dt);
 		stateReport(true);
