@@ -34,11 +34,11 @@ let positionComputeFShader = `
 	uniform sampler2D velocity_tex;
 
 	void main() {
-		vec4 position = texture2D(position_tex, texcoord_passthru);
+		vec4 position = 2.*texture2D(position_tex, texcoord_passthru)-1.;
 		vec4 velocity = 2.*texture2D(velocity_tex, texcoord_passthru)-1.;
 		vec2 updatedPosition = position.xy + dt*velocity.xy;
 		//updatedPosition = mod(updatedPosition, 1.0); // toroidal bounds
-		gl_FragColor = vec4(updatedPosition, position.zw);
+		gl_FragColor = vec4(0.5+0.5*updatedPosition, 0.5+0.5*position.zw);
 	}
 `;
 
@@ -89,19 +89,19 @@ let collisionComputeFShader = `
 		vec4 velocity_diff = co_velocity-velocity;
 		float speed = length(velocity_diff.xy);
 		
+		// Particles out of range will have no contribution
+		gl_FragColor = vec4(0);
+		
 		// Check if this is the particle itself (if so passthrough the velocity)
-		/* if (co_texcoord_passthru.x > texcoord_passthru.x-0.5 && co_texcoord_passthru.x < texcoord_passthru.x+0.5){
-			gl_FragColor = 0.5+0.5*velocity;
-		}*/
-		if (distance < 0.01) gl_FragColor = 0.5+0.5*velocity; //TODO: remove and clean this up
+		if (co_texcoord_passthru.x > texcoord_passthru.x-0.5/texture_size.x && co_texcoord_passthru.x < texcoord_passthru.x+0.5/texture_size.x){
+			gl_FragColor += 0.5+0.5*velocity;
+		}
 		// Check if the particles are in collision range
-		else if (distance < 2.*radius && distance > 0.01){
+		else if (distance < 2.*radius && distance > radius){
 			// Calculate Impulse
 			vec2 impulse = -abs(dot(position_diff.xy,velocity_diff.xy)/(distance*distance))*position_diff.xy; // TODO: add masses into computation
-			gl_FragColor = vec4(impulse,0,0);
+			gl_FragColor += vec4(0.5*impulse,0,0);
 		}
-		// Otherwise this particle has no contribution
-		else gl_FragColor = vec4(0);
 	}
 `;
 
@@ -143,10 +143,15 @@ let boundaryComputeFShader = `
 
 // Draw
 let drawVShader = `
+	uniform vec2 resolution;
+
 	// State selection
 	uniform int n_particles;
 	attribute float particle_index;
 	uniform sampler2D state_ptr;
+
+	// Particle size
+	uniform float radius;
 
 	vec4 stateSelect(sampler2D stateTexture, int stateSize, float selection){
 		float stateSizef = float(stateSize);
@@ -156,7 +161,9 @@ let drawVShader = `
 	void main(void) {
 		vec4 state = stateSelect(state_ptr, n_particles, particle_index);
 		gl_Position = vec4(state.xy, 0.0, 1.0);
-		gl_PointSize = 10.0 + 20.0*particle_index/float(n_particles-1);
+		
+		float screen_radius = radius*resolution.x;
+		gl_PointSize = 2.*screen_radius; //10.0 + 20.0*particle_index/float(n_particles-1);
 	}
 `;
 let drawFShader = `
@@ -217,8 +224,11 @@ function main() {
 	
 	/**** Initial JS Setup ****/
 	// Setup data
+
+	var n_particles = 10;
+	var radius = 0.035;
+
 	var n_dim = 2;
-	var n_particles = 2;
 	var n_tris = 2;
 
 
@@ -248,7 +258,7 @@ function main() {
 	collisionComputeProgram = buildShaderProgram(collisionComputeVShader, collisionComputeFShader);
 	gl.useProgram(collisionComputeProgram);
 	//  Boundary Compute Program: uniform indicies
-	//var collisionTLocation = gl.getUniformLocation(collisionComputeProgram, "dt");
+	var collisionTLocation = gl.getUniformLocation(collisionComputeProgram, "dt");
 	var collisionPositionLocation = gl.getUniformLocation(collisionComputeProgram, "position_tex");
 	var collisionVelocityLocation = gl.getUniformLocation(collisionComputeProgram, "velocity_tex");
 	var collisionResolutionLocation = gl.getUniformLocation(collisionComputeProgram, "texture_size");
@@ -276,6 +286,8 @@ function main() {
 	// Draw Program: uniform indicies
 	var drawNLocation = gl.getUniformLocation(drawProgram, "n_particles");
 	var drawPositionLocation = gl.getUniformLocation(drawProgram, "state_ptr");
+	var drawRadiusLocation = gl.getUniformLocation(drawProgram, "radius");
+	var drawResolutionLocation = gl.getUniformLocation(drawProgram, "resolution");
 	// Draw Program: attributes indicies
 	var drawIndexLocation = gl.getAttribLocation(drawProgram, "particle_index");
 
@@ -334,7 +346,8 @@ function main() {
 		-1, 1,
 		1, -1,
 		1, 1,
-	]).flat();
+	]);
+	pairScreenCoords = [].concat.apply([], pairScreenCoords); //flatten
 	pairScreenCoords = new Float32Array(pairScreenCoords);
 	gl.bindBuffer(gl.ARRAY_BUFFER, pairScreenBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, pairScreenCoords, gl.STATIC_DRAW);
@@ -359,7 +372,8 @@ function main() {
 		0, 1,
 		1, 0,
 		1, 1,
-	]).flat();
+	]);
+	pairTexCoords = [].concat.apply([], pairTexCoords); //flatten
 	pairTexCoords = new Float32Array(pairTexCoords);
 	gl.bindBuffer(gl.ARRAY_BUFFER, pairTexcoordBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, pairTexCoords, gl.STATIC_DRAW);
@@ -372,7 +386,8 @@ function main() {
 		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
 		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
 		(particle_index+0.5)/n_particles, (particle_index+0.5)/n_particles,
-	]).flat();
+	]);
+	pairCoTexCoords = [].concat.apply([],pairCoTexCoords); //flatten
 	pairCoTexCoords = new Float32Array(pairCoTexCoords);
 	gl.bindBuffer(gl.ARRAY_BUFFER, pairCoTexcoordBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, pairCoTexCoords, gl.STATIC_DRAW);
@@ -384,7 +399,10 @@ function main() {
 	
 	// fill texture with pixels
 	//var positionTexData = [...Array(n_particles).keys()].map(pos => [pos/(n_particles-1.), pos/(n_particles-1.), 0]).flat();
-	var positionTexData = [...Array(n_particles).keys()].map(pos => [Math.random(), Math.random(), 0]).flat();
+	var positionTexData = [...Array(n_particles).keys()].map(pos => [Math.random(), Math.random(), 0]);
+	//var positionTexData = [[0.25,0.5,0],[0.75,0.5,0]];//TODO: remove
+	//var positionTexData = [[0,0.5,0],[0.75,0.5,0]];//TODO: remove
+	positionTexData = [].concat.apply([], positionTexData); //flatten
 	positionTexData = new Float32Array(positionTexData);
 	// Fill data into a texture
 	gl.bindTexture(gl.TEXTURE_2D, prevPositionTexture);
@@ -405,7 +423,9 @@ function main() {
 	
 	// Create a texture for velocity
 	//var velocityTexData = [...Array(n_particles).keys()].map(vel => [0.5*vel/(n_particles-1.)+0.25, 0.75-0.5*vel/(n_particles-1.), 0]).flat();
-	velocityTexData = [...Array(n_particles).keys()].map(vel => [0.25+0.5*Math.random(), 0.25+0.5*Math.random(), 0]).flat();
+	var velocityTexData = [...Array(n_particles).keys()].map(vel => [Math.random(), Math.random(), 0]);
+	//var velocityTexData = [[0.5,0.5,0],[1.0,0.5,0]];//TODO: remove
+	velocityTexData = [].concat.apply([], velocityTexData); //flatten
 	velocityTexData = new Float32Array(velocityTexData);
 	gl.bindTexture(gl.TEXTURE_2D, prevVelocityTexture);
 	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, n_particles, 1, 0, gl.RGB, gl.FLOAT, velocityTexData);
@@ -520,8 +540,8 @@ function main() {
 		gl.uniform2f(collisionResolutionLocation, n_particles, 0);
 		
 		// Set Uniforms
-		//gl.uniform1f(collisionTLocation, dt);
-		gl.uniform1f(collisionRadiusLocation, 0.1);
+		gl.uniform1f(collisionTLocation, dt);
+		gl.uniform1f(collisionRadiusLocation, radius);
 		
 		// Clear the view
 		gl.clearColor(0, 0, 0, 0);  // Clear the attachment(s).
@@ -634,6 +654,8 @@ function main() {
 		gl.bindTexture(gl.TEXTURE_2D, nextPositionTexture);
 		gl.uniform1i(drawPositionLocation, 0);
 		gl.uniform1i(drawNLocation, n_particles);
+		gl.uniform1f(drawRadiusLocation, radius);
+		gl.uniform2f(drawResolutionLocation, gl.canvas.width, gl.canvas.height);
 		
 		if (clear){ // Clear the view
 			gl.clearColor(1, 1, 1, 1);
@@ -654,7 +676,7 @@ function main() {
 		then = time;
 		var loopFraction = (time % loopLength)/parseFloat(loopLength);
 		
-		//collisionCompute(dt);
+		collisionCompute(dt);
 		boundaryCompute(dt);
 		positionCompute(dt);
 		stateReport(true);
