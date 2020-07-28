@@ -205,6 +205,26 @@ let stateReportFShader = `
 	}
 `;
 
+// Colorspace Background
+let colorspaceVShader = `
+	attribute vec4 position;
+	varying vec4 colorspace;
+
+	void main() {
+		gl_Position = position;
+		colorspace = 0.5+0.5*vec4(position.xy,-1,1);
+	}
+`;
+let colorspaceFShader = `
+	precision mediump float;
+	// Passed in from the vertex shader.
+	varying vec4 colorspace;
+
+	void main() {
+		gl_FragColor = vec4(colorspace.x, colorspace.z, colorspace.y, colorspace.w);  // the red-blue space is slightly nicer
+	}
+`;
+
 
 function main() {
 	/**** Initial WebGL Setup ****/
@@ -291,6 +311,13 @@ function main() {
 	// Draw Program: attributes indicies
 	var drawIndexLocation = gl.getAttribLocation(drawProgram, "particle_index");
 
+	// Draw Program: compilation
+	colorspaceProgram = buildShaderProgram(colorspaceVShader, colorspaceFShader);
+	gl.useProgram(colorspaceProgram);
+	// Report Program: uniform indicies
+	// Report Program: attributes indicies
+	var colorspacePositionLocation = gl.getAttribLocation(colorspaceProgram, "position");
+	
 	
 	/**** Initial Shared Setup ****/
 	// Shared: buffer allocations and indicies
@@ -396,6 +423,7 @@ function main() {
 	var drawIndicies = new Float32Array([...Array(n_particles).keys()]);
 	gl.bindBuffer(gl.ARRAY_BUFFER, drawIndexBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, drawIndicies, gl.STATIC_DRAW);
+	
 	
 	// fill texture with pixels
 	//var positionTexData = [...Array(n_particles).keys()].map(pos => [pos/(n_particles-1.), pos/(n_particles-1.), 0]).flat();
@@ -637,6 +665,27 @@ function main() {
 		gl.drawArrays(gl.TRIANGLES, 0, 3*n_tris);
 	}
 	
+	function colorspaceReport(clear){
+		// Use the stateReport program
+		gl.useProgram(colorspaceProgram);
+		
+		// render to the canvas
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+		
+		// Turn on the position attribute
+		gl.bindBuffer(gl.ARRAY_BUFFER, screenBuffer);
+		gl.enableVertexAttribArray(colorspacePositionLocation);
+		gl.vertexAttribPointer(colorspacePositionLocation, n_dim, gl.FLOAT, gl.FLOAT, false, 0, 0);
+		
+		if (clear){ // Clear the view
+			gl.clearColor(1, 1, 1, 1);
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		}
+		// Draw the geometry.
+		gl.drawArrays(gl.TRIANGLES, 0, 3*n_tris);
+	}
+	
 	function stateDraw(clear){
 		// Use the stateReport program
 		gl.useProgram(drawProgram);
@@ -679,7 +728,8 @@ function main() {
 		collisionCompute(dt);
 		boundaryCompute(dt);
 		positionCompute(dt);
-		stateReport(true);
+		colorspaceReport(true);
+		stateReport(false);
 		stateDraw(false);
 		
 		requestAnimationFrame(drawFrame);
