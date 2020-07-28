@@ -115,4 +115,6 @@ https://stackoverflow.com/questions/56780278/how-to-keep-coordination-between-pa
 https://stackoverflow.com/questions/15090657/texture-driven-particles-in-webgl-opengl-using-a-shader  
 
 ## Todo
-- Add background color that showing mapping between colorspace and clipspace
+- Improve numerical stability
+- Add the classical gravity and Coulomb force
+- Add UI
