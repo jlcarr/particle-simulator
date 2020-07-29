@@ -97,7 +97,7 @@ let collisionComputeFShader = `
 			gl_FragColor += 0.5+0.5*velocity;
 		}
 		// Check if the particles are in collision range
-		else if (distance < 2.*radius && distance > radius){
+		else if (distance < 2.*radius && distance > radius && dot(position_diff.xy,velocity_diff.xy) <0.){
 			// Calculate Impulse
 			vec2 impulse = -abs(dot(position_diff.xy,velocity_diff.xy)/(distance*distance))*position_diff.xy; // TODO: add masses into computation
 			gl_FragColor += vec4(0.5*impulse,0,0);
@@ -245,8 +245,8 @@ function main() {
 	/**** Initial JS Setup ****/
 	// Setup data
 
-	var n_particles = 10;
-	var radius = 0.035;
+	var n_particles = 100;
+	var radius = 0.025;
 
 	var n_dim = 2;
 	var n_tris = 2;
