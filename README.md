@@ -5,20 +5,21 @@ A WebGL project to simulate classical physics particles.
 Parameters:
 - **N**: The number of particles
 - **dim**: (=2) The dimensionality of the problem
-- **pos**: (N * vec_dim) The positions of each particle
-- **vel**: (N * vec_dim) The velocities of each particle
+- **pos**: (N * dim) The positions of each particle
+- **vel**: (N * dim) The velocities of each particle
 
 1. Define the initial values for the parameters of the simulation
-2. Shader compute the relative values for pairs are particles
-   1. Relative positions
-   2. Gravitational forces
-   3. Electromagentic forces
-   3. Collisions
-3. Compute the updates for each particle
-   1. Velocity updates
-   2. Position updates
-   3. Wall collisions
-4. Draw the particles from their data in texture
+2. Construct the buffers and compile the shader programs
+3. Loop rendering frames
+   1. Physics timestep computations
+      1. Compute the time delta
+      2. Compute classical gravitational and electric impulses (TODO)
+      3. Compute inter-particle collision impulses
+      4. Compute boundary collision impulses
+      5. Compute position updates
+   2. Draw
+      1. Draw the state report
+      2. Draw the particle positions
 
 ### Dynamics Computations
 #### N-Body Simulations
@@ -43,6 +44,11 @@ https://en.wikipedia.org/wiki/Numerical_methods_for_ordinary_differential_equati
 https://en.wikipedia.org/wiki/Euler_method  
 Since the equations of motion are a system of first order ordinary differential equations, they can be solved numerically in real time using numerical integration techniques  
 The most basic method is the Euler method:  
+![\vec{x}(t+\mathrm{d} t) = \vec{x}(t) + \vec{v}(t) \mathrm{d} t](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bx%7D(t%2B%5Cmathrm%7Bd%7D%20t)%20%3D%20%5Cvec%7Bx%7D(t)%20%2B%20%5Cvec%7Bv%7D(t)%20%5Cmathrm%7Bd%7D%20t)
+Where:  
+- ![\vec{x}(t)](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bx%7D(t)) is a vector-valued quantity (e.g. positon) at time t
+- ![\vec{v}(t)](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bv%7D(t)) is a the time dertivative of said vector-valued quantity (e.g. velocity) at time t
+- ![\mathrm{d} t](https://render.githubusercontent.com/render/math?math=%5Cmathrm%7Bd%7D%20t) is the finite time delta used (assumed to be small enough to approximate an infinitesimal)
 
 #### Collisions
 https://en.wikipedia.org/wiki/Collision  
@@ -55,7 +61,8 @@ Where:
 - ![\vec{v}_i](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bv%7D_i) is the velocity vector of particle i
 - ![m_i](https://render.githubusercontent.com/render/math?math=m_i) is the mass of particle i
 
-**Note**: Improper handling of collisions can easily lead to numerical instabilties: leaks in momentum violate converation of momentum, which propagates across the system by entropy, leading to further leakages causing an exponential  explosion of the whole simulation.
+**Note**: Improper handling of collisions can easily lead to numerical instabilties: leaks in momentum violate converation of momentum, which propagates across the system by entropy, leading to further leakages causing an exponential  explosion of the whole simulation.  
+**Note**: In order to be a proper collision the relative position and relative velocity between two particles must have a negative-valued dot product: they must be in opposite directions, i.e. the must be approaching eachother. Violations to this can be caused by clipping from relatively large time deltas.  
 
 ### Position (Clip) Space Topology
 https://en.wikipedia.org/wiki/Surface_(topology)  
@@ -80,6 +87,7 @@ Given that WebGL is designed for 3d graphics rendering, one must jump through a 
 - Therefore the vertex shader essentially acts as a passthrough to the fragment shader.
 - The fragment shader performs the computation.
 - A fun way to think about the use of textures for encoding vectors of state is how the dynamics in clip space map to colorspace.
+
 ### Parallelism vs. Output Size
 For a given WebGL program using he above approach the parallelism can be described as follows  
 Parameters:
@@ -100,6 +108,13 @@ Rather than have the colorspace in [0,127] integers, it is preferable to have it
 The [0,1] colorspace is then converted to [-1,1] clipspace for computations.  
 Thankfully WebGL has a standard floating point number extension that allows for this.  
 
+### Aggregations
+Sometime one may want to sum up parallel computed values (aggregate them) from the GPU.  
+In the example of this particle simulator, summations of velocity changes (impulses) from forces and collisions between all particle are needed to compute the update to the velocity.  
+one can get the GPU to perform this action by using WebGL's alpha blending functionality.  
+In particular, encoding all inter-particle interations as a stack of quads to be rendered to the velocity state texture.  
+During this shader computation the alpha blend function is as follows: ```gl.blendFunc(gl.ONE, gl.ONE);```
+
 ## WebGL Resources
 ### Complete Guides
 https://webglfundamentals.org  
@@ -116,5 +131,6 @@ https://stackoverflow.com/questions/15090657/texture-driven-particles-in-webgl-o
 
 ## Todo
 - Improve numerical stability
+- Add variable particle masses
 - Add the classical gravity and Coulomb force
 - Add UI
