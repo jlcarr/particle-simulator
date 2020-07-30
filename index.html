@@ -2,9 +2,41 @@
 <html>
 	<head>
 		<title>Particle Simulator</title>
+		<link rel="stylesheet" href="styles/style.css">
 		<script src="scripts/particles.js"></script>
 	</head>
 	<body>
+		<h1>Particle Simulator</h1>
+		
+		<h2>Description</h2>
+		<p>
+			A WebGL project to simulate classical physics particles.
+		</p>
+		
+		<h2>Inputs</h2>
+		<ul>
+			<li><b><i>#</i></b>: The number of the particle</li>
+			<li><b><i>x</i><sub>1</sub></b>: The x-coordinate of the particle's initial position</li>
+			<li><b><i>x</i><sub>2</sub></b>: The y-coordinate of the particle's initial position</li>
+			<li><b><i>v</i><sub>1</sub></b>: The x-coordinate of the particle's initial velocity</li>
+			<li><b><i>v</i><sub>2</sub></b>: The y-coordinate of the particle's initial velocity</li>
+			<li><b><i>r</i></b>: The radius of the particle</li>
+		</ul>
+		<table>
+			<thead>
+				<tr>
+					<th id="particle-number" rowspan=><i>#</i></th>
+					<th id="particle-pos-x"><i>x</i><sub>1</sub></th>
+					<th id="particle-pos-y"><i>x</i><sub>2</sub></th>
+					<th id="particle-vel-x"><i>v</i><sub>1</sub></th>
+					<th id="particle-vel-y"><i>v</i><sub>2</sub></th>
+					<th id="particle-radius" rowspan="2"><i>r</i></th>
+				</tr>
+			</thead>
+			<tbody id="particle-list"></tbody>
+		</table>
+		
+		<h2>Result</h2>
 		<canvas id="glcanvas" width="500" height="500" style="border: 1px solid black;">
 		  Oh no! Your browser doesn't support canvas!
 		</canvas>

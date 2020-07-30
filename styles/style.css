@@ -1,0 +1,35 @@
+table, th, td {
+	border:1px solid black;
+	border-collapse: collapse;
+}
+
+th, td {
+	padding: 5px;
+	text-align: left;
+}
+
+
+tbody{
+	display:block;
+	overflow-y:scroll;
+	height: 200px;
+	width: 100%;
+}
+
+thead tr {
+	display:block;
+	width: 100%;
+}
+
+th, td {
+	padding: 5px;
+	text-align: left;
+	width: 100px;
+}
+
+
+canvas {
+	border:1px solid black;
+	width: 500px;
+	height: 500px;
+}

@@ -44,7 +44,7 @@ https://en.wikipedia.org/wiki/Numerical_methods_for_ordinary_differential_equati
 https://en.wikipedia.org/wiki/Euler_method  
 Since the equations of motion are a system of first order ordinary differential equations, they can be solved numerically in real time using numerical integration techniques  
 The most basic method is the Euler method:  
-![\vec{x}(t+\mathrm{d} t) = \vec{x}(t) + \vec{v}(t) \mathrm{d} t](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bx%7D(t%2B%5Cmathrm%7Bd%7D%20t)%20%3D%20%5Cvec%7Bx%7D(t)%20%2B%20%5Cvec%7Bv%7D(t)%20%5Cmathrm%7Bd%7D%20t)
+![\vec{x}(t+\mathrm{d} t) = \vec{x}(t) + \vec{v}(t) \mathrm{d} t](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bx%7D(t%2B%5Cmathrm%7Bd%7D%20t)%20%3D%20%5Cvec%7Bx%7D(t)%20%2B%20%5Cvec%7Bv%7D(t)%20%5Cmathrm%7Bd%7D%20t)  
 Where:  
 - ![\vec{x}(t)](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bx%7D(t)) is a vector-valued quantity (e.g. positon) at time t
 - ![\vec{v}(t)](https://render.githubusercontent.com/render/math?math=%5Cvec%7Bv%7D(t)) is a the time dertivative of said vector-valued quantity (e.g. velocity) at time t

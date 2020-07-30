@@ -732,7 +732,7 @@ function main() {
 		stateReport(false);
 		stateDraw(false);
 		
-		requestAnimationFrame(drawFrame);
+		//requestAnimationFrame(drawFrame);
 	}
 	requestAnimationFrame(drawFrame);
 }
