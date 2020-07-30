@@ -24,7 +24,11 @@ thead tr {
 th, td {
 	padding: 5px;
 	text-align: left;
-	width: 100px;
+	width: 75px;
+}
+
+input[type=number]{
+    width: 65px;
 }
 
 

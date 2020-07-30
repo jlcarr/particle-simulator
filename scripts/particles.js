@@ -5,7 +5,7 @@ let gl = null;
 let glCanvas = null;
 let shaderProgram;
 
-window.addEventListener("load", main, false);
+//window.addEventListener("load", main, false);
 
 /**** Shader Programs ****/
 // Position State Compute
@@ -732,7 +732,7 @@ function main() {
 		stateReport(false);
 		stateDraw(false);
 		
-		//requestAnimationFrame(drawFrame);
+		requestAnimationFrame(drawFrame);
 	}
 	requestAnimationFrame(drawFrame);
 }

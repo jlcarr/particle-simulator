@@ -4,6 +4,7 @@
 		<title>Particle Simulator</title>
 		<link rel="stylesheet" href="styles/style.css">
 		<script src="scripts/particles.js"></script>
+		<script src="scripts/UI.js"></script>
 	</head>
 	<body>
 		<h1>Particle Simulator</h1>
@@ -30,13 +31,20 @@
 					<th id="particle-pos-y"><i>x</i><sub>2</sub></th>
 					<th id="particle-vel-x"><i>v</i><sub>1</sub></th>
 					<th id="particle-vel-y"><i>v</i><sub>2</sub></th>
-					<th id="particle-radius" rowspan="2"><i>r</i></th>
+					<th id="particle-radius"><i>r</i></th>
 				</tr>
 			</thead>
 			<tbody id="particle-list"></tbody>
 		</table>
-		
+		<div>Total: <span id="number-particles">0</span></div>
+		<br>
+		<input type="number" id="number-new-particles"></input> <button onclick="AddRandomParticles();">Add Random Particles</button>
+		<br>
+		<button onclick="ClearParticles();">Clear</button>
+
 		<h2>Result</h2>
+		<button onclick="main();">Start</button>
+		<br><br>
 		<canvas id="glcanvas" width="500" height="500" style="border: 1px solid black;">
 		  Oh no! Your browser doesn't support canvas!
 		</canvas>
