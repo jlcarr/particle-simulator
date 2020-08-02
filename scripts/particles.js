@@ -4,13 +4,13 @@
 var gl = null;
 var glCanvas = null;
 var shaderProgram;
+var animation = null;
 
 //window.addEventListener("load", main, false);
 function start(){
 	var number_list = [];
 	var x_list = [];
 	var v_list = [];
-	var r_list = [];
 
 	var particle_table = document.querySelector('#particle-table');
 	var isheader = true;
@@ -32,12 +32,14 @@ function start(){
 			0.5+0.5*parseFloat(row.cells[4].querySelector('input').value),
 			0,
 		]);
-
-		r_list.push(parseFloat(row.cells[5].querySelector('input').value));
 	}
 	if (number_list.length == 0 ) return;
 	
-	performSimulation(number_list, x_list, v_list, r_list);
+	performSimulation(number_list, x_list, v_list);
+}
+
+function stop(){
+	if (animation != null) cancelAnimationFrame(animation);
 }
 
 /**** Shader Programs ****/
@@ -259,22 +261,7 @@ var colorspaceFShader = `
 `;
 
 
-function performSimulation(number_list, x_list, v_list, r_list){
-
-	/**** Initial WebGL Setup ****/
-	glCanvas = document.getElementById("glcanvas");
-	gl = glCanvas.getContext("webgl");
-	// Set the view port
-	gl.viewport(0,0, glCanvas.width, glCanvas.height);
-	// Other settings
-	gl.getExtension("OES_texture_float");
-	gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.enable(gl.CULL_FACE);
-    //gl.enable(gl.DEPTH_TEST);
-	gl.enable(gl.BLEND);
-	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-	
-	
+function performSimulation(number_list, x_list, v_list){
 	
 	/**** Initial JS Setup ****/
 	// Setup data
@@ -284,95 +271,111 @@ function performSimulation(number_list, x_list, v_list, r_list){
 
 	var n_dim = 2;
 	var n_tris = 2;
-
-
-	/**** Initial Program Setup ****/
-	// Report Program: compilation
-	stateReportProgram = buildShaderProgram(stateReportVShader, stateReportFShader);
-	gl.useProgram(stateReportProgram);
-	// Report Program: uniform indicies
-	var reportTextureLocation = gl.getUniformLocation(stateReportProgram, "texture_ptr");
-	// Report Program: attributes indicies
-	var reportPositionLocation = gl.getAttribLocation(stateReportProgram, "position");
-	var reportTexcoordLocation = gl.getAttribLocation(stateReportProgram, "texcoord");
-	
-	// Position Compute Program: compilation
-	positionComputeProgram = buildShaderProgram(positionComputeVShader, positionComputeFShader);
-	gl.useProgram(positionComputeProgram);
-	// Position Compute Program: uniform indicies
-	var positionTLocation = gl.getUniformLocation(positionComputeProgram, "dt");
-	var positionPositionLocation = gl.getUniformLocation(positionComputeProgram, "position_tex");
-	var positionVelocityLocation = gl.getUniformLocation(positionComputeProgram, "velocity_tex");
-	var positionResolutionLocation = gl.getUniformLocation(positionComputeProgram, "texture_size");
-	// Position Compute Program: attributes indicies
-	var positionScreenLocation = gl.getAttribLocation(positionComputeProgram, "screenquad");
-	var positionTexcoordLocation = gl.getAttribLocation(positionComputeProgram, "texcoord");
-	
-	// Collision Compute Program: compilation
-	collisionComputeProgram = buildShaderProgram(collisionComputeVShader, collisionComputeFShader);
-	gl.useProgram(collisionComputeProgram);
-	//  Boundary Compute Program: uniform indicies
-	var collisionTLocation = gl.getUniformLocation(collisionComputeProgram, "dt");
-	var collisionPositionLocation = gl.getUniformLocation(collisionComputeProgram, "position_tex");
-	var collisionVelocityLocation = gl.getUniformLocation(collisionComputeProgram, "velocity_tex");
-	var collisionResolutionLocation = gl.getUniformLocation(collisionComputeProgram, "texture_size");
-	var collisionRadiusLocation = gl.getUniformLocation(collisionComputeProgram, "radius");
-	//  Boundary Compute Program: attributes indicies
-	var collisionScreenLocation = gl.getAttribLocation(collisionComputeProgram, "screenquad");
-	var collisionTexcoordLocation = gl.getAttribLocation(collisionComputeProgram, "texcoord");
-	var collisionCoTexcoordLocation = gl.getAttribLocation(collisionComputeProgram, "co_texcoord");
-
-	// Boundary Compute Program: compilation
-	boundaryComputeProgram = buildShaderProgram(boundaryComputeVShader, boundaryComputeFShader);
-	gl.useProgram(positionComputeProgram);
-	//  Boundary Compute Program: uniform indicies
-	var boundaryTLocation = gl.getUniformLocation(boundaryComputeProgram, "dt");
-	var boundaryPositionLocation = gl.getUniformLocation(boundaryComputeProgram, "position_tex");
-	var boundaryVelocityLocation = gl.getUniformLocation(boundaryComputeProgram, "velocity_tex");
-	var boundaryResolutionLocation = gl.getUniformLocation(boundaryComputeProgram, "texture_size");
-	//  Boundary Compute Program: attributes indicies
-	var boundaryScreenLocation = gl.getAttribLocation(boundaryComputeProgram, "screenquad");
-	var boundaryTexcoordLocation = gl.getAttribLocation(boundaryComputeProgram, "texcoord");
-	
-	// Draw Program: compilation
-	drawProgram = buildShaderProgram(drawVShader, drawFShader);
-	gl.useProgram(drawProgram);
-	// Draw Program: uniform indicies
-	var drawNLocation = gl.getUniformLocation(drawProgram, "n_particles");
-	var drawPositionLocation = gl.getUniformLocation(drawProgram, "state_ptr");
-	var drawRadiusLocation = gl.getUniformLocation(drawProgram, "radius");
-	var drawResolutionLocation = gl.getUniformLocation(drawProgram, "resolution");
-	// Draw Program: attributes indicies
-	var drawIndexLocation = gl.getAttribLocation(drawProgram, "particle_index");
-
-	// Draw Program: compilation
-	colorspaceProgram = buildShaderProgram(colorspaceVShader, colorspaceFShader);
-	gl.useProgram(colorspaceProgram);
-	// Report Program: uniform indicies
-	// Report Program: attributes indicies
-	var colorspacePositionLocation = gl.getAttribLocation(colorspaceProgram, "position");
 	
 	
-	/**** Initial Shared Setup ****/
-	// Shared: buffer allocations and indicies
-	var screenBuffer = gl.createBuffer();
-	var reportScreenBuffer = gl.createBuffer();
-	var pairScreenBuffer = gl.createBuffer();
-	var texcoordBuffer = gl.createBuffer();
-	var pairTexcoordBuffer = gl.createBuffer();
-	var pairCoTexcoordBuffer = gl.createBuffer();
-	var drawIndexBuffer = gl.createBuffer();
-	// Shared: texture allocations and indicies
-	var prevPositionTexture = gl.createTexture();
-	var nextPositionTexture = gl.createTexture();
-	var prevVelocityTexture = gl.createTexture();
-	var nextVelocityTexture = gl.createTexture();
-	// Shared: framebuffer allocations and indicies
-	var nextPositionFB = gl.createFramebuffer();
-	var prevPositionFB = gl.createFramebuffer();
-	var nextVelocityFB = gl.createFramebuffer();
-	var prevVelocityFB = gl.createFramebuffer();
+	if (glCanvas == null){
+		/**** Initial WebGL Setup ****/
+		glCanvas = document.getElementById("glcanvas");
+		gl = glCanvas.getContext("webgl");
+		// Set the view port
+		gl.viewport(0,0, glCanvas.width, glCanvas.height);
+		// Other settings
+		gl.getExtension("OES_texture_float");
+		gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+		gl.enable(gl.CULL_FACE);
+		//gl.enable(gl.DEPTH_TEST);
+		gl.enable(gl.BLEND);
+		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
+
+		/**** Initial Program Setup ****/
+		// Report Program: compilation
+		stateReportProgram = buildShaderProgram(stateReportVShader, stateReportFShader);
+		gl.useProgram(stateReportProgram);
+		// Report Program: uniform indicies
+		reportTextureLocation = gl.getUniformLocation(stateReportProgram, "texture_ptr");
+		// Report Program: attributes indicies
+		reportPositionLocation = gl.getAttribLocation(stateReportProgram, "position");
+		reportTexcoordLocation = gl.getAttribLocation(stateReportProgram, "texcoord");
+		
+		// Position Compute Program: compilation
+		positionComputeProgram = buildShaderProgram(positionComputeVShader, positionComputeFShader);
+		gl.useProgram(positionComputeProgram);
+		// Position Compute Program: uniform indicies
+		positionTLocation = gl.getUniformLocation(positionComputeProgram, "dt");
+		positionPositionLocation = gl.getUniformLocation(positionComputeProgram, "position_tex");
+		positionVelocityLocation = gl.getUniformLocation(positionComputeProgram, "velocity_tex");
+		positionResolutionLocation = gl.getUniformLocation(positionComputeProgram, "texture_size");
+		// Position Compute Program: attributes indicies
+		positionScreenLocation = gl.getAttribLocation(positionComputeProgram, "screenquad");
+		positionTexcoordLocation = gl.getAttribLocation(positionComputeProgram, "texcoord");
+		
+		// Collision Compute Program: compilation
+		collisionComputeProgram = buildShaderProgram(collisionComputeVShader, collisionComputeFShader);
+		gl.useProgram(collisionComputeProgram);
+		//  Boundary Compute Program: uniform indicies
+		collisionTLocation = gl.getUniformLocation(collisionComputeProgram, "dt");
+		collisionPositionLocation = gl.getUniformLocation(collisionComputeProgram, "position_tex");
+		collisionVelocityLocation = gl.getUniformLocation(collisionComputeProgram, "velocity_tex");
+		collisionResolutionLocation = gl.getUniformLocation(collisionComputeProgram, "texture_size");
+		collisionRadiusLocation = gl.getUniformLocation(collisionComputeProgram, "radius");
+		//  Boundary Compute Program: attributes indicies
+		collisionScreenLocation = gl.getAttribLocation(collisionComputeProgram, "screenquad");
+		collisionTexcoordLocation = gl.getAttribLocation(collisionComputeProgram, "texcoord");
+		collisionCoTexcoordLocation = gl.getAttribLocation(collisionComputeProgram, "co_texcoord");
+
+		// Boundary Compute Program: compilation
+		boundaryComputeProgram = buildShaderProgram(boundaryComputeVShader, boundaryComputeFShader);
+		gl.useProgram(positionComputeProgram);
+		//  Boundary Compute Program: uniform indicies
+		boundaryTLocation = gl.getUniformLocation(boundaryComputeProgram, "dt");
+		boundaryPositionLocation = gl.getUniformLocation(boundaryComputeProgram, "position_tex");
+		boundaryVelocityLocation = gl.getUniformLocation(boundaryComputeProgram, "velocity_tex");
+		boundaryResolutionLocation = gl.getUniformLocation(boundaryComputeProgram, "texture_size");
+		//  Boundary Compute Program: attributes indicies
+		boundaryScreenLocation = gl.getAttribLocation(boundaryComputeProgram, "screenquad");
+		boundaryTexcoordLocation = gl.getAttribLocation(boundaryComputeProgram, "texcoord");
+		
+		// Draw Program: compilation
+		drawProgram = buildShaderProgram(drawVShader, drawFShader);
+		gl.useProgram(drawProgram);
+		// Draw Program: uniform indicies
+		drawNLocation = gl.getUniformLocation(drawProgram, "n_particles");
+		drawPositionLocation = gl.getUniformLocation(drawProgram, "state_ptr");
+		drawRadiusLocation = gl.getUniformLocation(drawProgram, "radius");
+		drawResolutionLocation = gl.getUniformLocation(drawProgram, "resolution");
+		// Draw Program: attributes indicies
+		drawIndexLocation = gl.getAttribLocation(drawProgram, "particle_index");
+
+		// Draw Program: compilation
+		colorspaceProgram = buildShaderProgram(colorspaceVShader, colorspaceFShader);
+		gl.useProgram(colorspaceProgram);
+		// Report Program: uniform indicies
+		// Report Program: attributes indicies
+		colorspacePositionLocation = gl.getAttribLocation(colorspaceProgram, "position");
+		
+		
+		/**** Initial Shared Setup ****/
+		// Shared: buffer allocations and indicies
+		screenBuffer = gl.createBuffer();
+		reportScreenBuffer = gl.createBuffer();
+		pairScreenBuffer = gl.createBuffer();
+		texcoordBuffer = gl.createBuffer();
+		pairTexcoordBuffer = gl.createBuffer();
+		pairCoTexcoordBuffer = gl.createBuffer();
+		drawIndexBuffer = gl.createBuffer();
+		// Shared: texture allocations and indicies
+		prevPositionTexture = gl.createTexture();
+		nextPositionTexture = gl.createTexture();
+		prevVelocityTexture = gl.createTexture();
+		nextVelocityTexture = gl.createTexture();
+		// Shared: framebuffer allocations and indicies
+		nextPositionFB = gl.createFramebuffer();
+		prevPositionFB = gl.createFramebuffer();
+		nextVelocityFB = gl.createFramebuffer();
+		prevVelocityFB = gl.createFramebuffer();
+	}
+	
 
 	/**** Initialize Buffers ****/
 	// Create a buffer for compute rect positions
@@ -758,7 +761,7 @@ function performSimulation(number_list, x_list, v_list, r_list){
 		// Setup time delta
 		time *= 0.001;
 		var dt = time - then;
-		if (dt > 1) dt = 1;  // clamp down timestep to avoid particles flying off without collision checks
+		if (dt > 1) dt = 0.001;  // clamp down timestep to avoid particles flying off without collision checks
 		then = time;
 		var loopFraction = (time % loopLength)/parseFloat(loopLength);
 		
@@ -769,9 +772,10 @@ function performSimulation(number_list, x_list, v_list, r_list){
 		stateReport(false);
 		stateDraw(false);
 		
-		requestAnimationFrame(drawFrame);
+		animation = requestAnimationFrame(drawFrame);
 	}
-	requestAnimationFrame(drawFrame);
+	stop();
+	animation = requestAnimationFrame(drawFrame);
 }
 
 

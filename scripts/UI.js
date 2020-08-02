@@ -26,8 +26,8 @@ function AddRandomParticle(){
 	// Velocity Y
 	new_particle.appendChild(addAttribute(Math.random()-1/2, true));
 	
-	// Radius
-	new_particle.appendChild(addAttribute(Math.random()/4, true));
+	// Remove Button
+	new_particle.appendChild(addButton("Remove", "RemoveParticle(this);"));
 	
 	document.querySelector('#particle-list').appendChild(new_particle);
 	
@@ -47,12 +47,39 @@ function addAttribute(value, editable){
 	return new_attribute
 }
 
+function addButton(text, function_string){
+	var new_attribute = document.createElement('td');
+	var remove_button = document.createElement('button');
+	remove_button.setAttribute('onclick',function_string);
+	remove_button.textContent = text;
+	new_attribute.appendChild(remove_button);
+	return new_attribute
+}
+
+
+
+function RemoveParticle(button){
+	var row = button.parentNode.parentNode;
+	row.parentNode.removeChild(row);
+	n_particles -= 1;
+
+	updateTableNumbering();
+	updateNParticlesLabel();
+}
+
 function ClearParticles(){
 	document.querySelector('#particle-list').innerHTML = '';
 	n_particles = 0;
 	updateNParticlesLabel();
 }
 
+
+function updateTableNumbering(){
+	var particle_table = document.querySelector('#particle-table');
+	for (var i=1; i < particle_table.rows.length; i++){
+		particle_table.rows[i].cells[0].textContent = i-1;
+	}
+}
 
 function updateNParticlesLabel(){
 	document.querySelector('#number-particles').textContent = n_particles;

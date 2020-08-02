@@ -17,21 +17,20 @@
 		<h2>Inputs</h2>
 		<ul>
 			<li><b><i>#</i></b>: The number of the particle</li>
-			<li><b><i>x</i><sub>1</sub></b>: The x-coordinate of the particle's initial position</li>
-			<li><b><i>x</i><sub>2</sub></b>: The y-coordinate of the particle's initial position</li>
-			<li><b><i>v</i><sub>1</sub></b>: The x-coordinate of the particle's initial velocity</li>
-			<li><b><i>v</i><sub>2</sub></b>: The y-coordinate of the particle's initial velocity</li>
-			<li><b><i>r</i></b>: The radius of the particle</li>
+			<li><b><i>r</i><sub>x</sub></b>: The x-coordinate of the particle's initial position</li>
+			<li><b><i>r</i><sub>y</sub></b>: The y-coordinate of the particle's initial position</li>
+			<li><b><i>v</i><sub>x</sub></b>: The x-coordinate of the particle's initial velocity</li>
+			<li><b><i>v</i><sub>y</sub></b>: The y-coordinate of the particle's initial velocity</li>
 		</ul>
 		<table id="particle-table">
 			<thead>
 				<tr>
 					<th id="particle-number" rowspan=><i>#</i></th>
-					<th id="particle-pos-x"><i>x</i><sub>1</sub></th>
-					<th id="particle-pos-y"><i>x</i><sub>2</sub></th>
-					<th id="particle-vel-x"><i>v</i><sub>1</sub></th>
-					<th id="particle-vel-y"><i>v</i><sub>2</sub></th>
-					<th id="particle-radius"><i>r</i></th>
+					<th id="particle-pos-x"><i>r</i><sub>x</sub></th>
+					<th id="particle-pos-y"><i>r</i><sub>y</sub></th>
+					<th id="particle-vel-x"><i>v</i><sub>x</sub></th>
+					<th id="particle-vel-y"><i>v</i><sub>y</sub></th>
+					<th>remove</th>
 				</tr>
 			</thead>
 			<tbody id="particle-list"></tbody>
@@ -42,7 +41,8 @@
 		<input type="number" id="number-new-particles"></input> <button onclick="AddRandomParticles();">Add Random Particles</button>
 
 		<h2>Result</h2>
-		<button onclick="start();">Start</button>
+		<button onclick="start();">&#9654;</button>
+		<button onclick="stop();">&#9632;</button>
 		<br><br>
 		<canvas id="glcanvas" width="500" height="500" style="border: 1px solid black;">
 		  Oh no! Your browser doesn't support canvas!

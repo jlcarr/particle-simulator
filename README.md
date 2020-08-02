@@ -133,4 +133,7 @@ https://stackoverflow.com/questions/15090657/texture-driven-particles-in-webgl-o
 - Improve numerical stability
 - Add variable particle masses
 - Add the classical gravity and Coulomb force
-- Add UI
+- Additional UI features
+   - Random particle ranges
+   - Lattice creation
+   - Report and colorspace toggles
