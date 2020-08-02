@@ -7,7 +7,7 @@ var n_particles = 0;
 function AddRandomParticles(){
 	var number_new_particles = document.querySelector('#number-new-particles').value;
 	
-	for (var i = 0; i< number_new_particles; i++) AddRandomParticle();
+	for (var i=0; i<number_new_particles; i++) AddRandomParticle();
 }
 
 function AddRandomParticle(){

@@ -6,6 +6,9 @@ var glCanvas = null;
 var shaderProgram;
 var animation = null;
 
+report_state = true;
+draw_colorspace = true;
+
 //window.addEventListener("load", main, false);
 function start(){
 	var number_list = [];
@@ -768,16 +771,15 @@ function performSimulation(number_list, x_list, v_list){
 		collisionCompute(dt);
 		boundaryCompute(dt);
 		positionCompute(dt);
-		colorspaceReport(true);
-		stateReport(false);
-		stateDraw(false);
+		if (draw_colorspace) colorspaceReport(true);
+		if (report_state) stateReport(!draw_colorspace);
+		stateDraw(!draw_colorspace && !report_state);
 		
 		animation = requestAnimationFrame(drawFrame);
 	}
 	stop();
 	animation = requestAnimationFrame(drawFrame);
 }
-
 
 
 

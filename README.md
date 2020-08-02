@@ -136,4 +136,3 @@ https://stackoverflow.com/questions/15090657/texture-driven-particles-in-webgl-o
 - Additional UI features
    - Random particle ranges
    - Lattice creation
-   - Report and colorspace toggles
