@@ -15,9 +15,34 @@
 	<body>
 		<h1>Particle Simulator</h1>
 		
+		<h2>Result</h2>
+		<canvas id="glcanvas" width="500" height="500" style="border: 1px solid black;">
+		  Oh no! Your browser doesn't support canvas!
+		</canvas>
+		<br>
+		<button onclick="start();">&#9654;</button>
+		<button onclick="stop();">&#9632;</button>
+		<br>
+		<br>
+		<input type="checkbox" id="report-state" onclick="report_state = this.checked;" checked>
+		<label for="report-state">Report particles' position in colorspace</label>
+		<br>
+		 <input type="checkbox" id="draw-colorspace" onclick="draw_colorspace = this.checked;" checked>
+		<label for="draw-colorspace">Draw the colorspace</label>
+		
 		<h2>Description</h2>
 		<p>
 			A WebGL project to simulate classical physics particles.
+		</p>
+		<p>
+			GPGPU techniques are used through WebGL to trick the GPU into performing the physics computations for this simulation.
+			<br>
+			In particular there is mapping between the particle clipspace, (<i>r</i><sub>x</sub>,<i>r</i><sub>y</sub>,<i>r</i><sub>z</sub>) &isin; [-1,1]<sup>3</sup>, to the colorspace, (R,G,B) &isin; [0,1]<sup>3</sup>.
+			<br>
+			Fragment shaders perform the physics computation while rendering to a texture representing the state.
+		</p>
+		<p>
+			Read more theory, implementation details and the source code <a href="https://github.com/jlcarr/particle-simulator">here</a>.
 		</p>
 		
 		<h2>Inputs</h2>
@@ -45,21 +70,7 @@
 		<button onclick="ClearParticles();">Clear</button>
 		<br><br>
 		<input type="number" id="number-new-particles"></input> <button onclick="AddRandomParticles();">Add Random Particles</button>
-
-		<h2>Result</h2>
-		 <input type="checkbox" id="report-state" onclick="report_state = this.checked;" checked>
-		<label for="report-state">Report particles' position in colorspace</label>
-		<br>
-		 <input type="checkbox" id="draw-colorspace" onclick="draw_colorspace = this.checked;" checked>
-		<label for="draw-colorspace">Draw the colorspace</label>
-		<br>
-		<br>
-		<button onclick="start();">&#9654;</button>
-		<button onclick="stop();">&#9632;</button>
 		<br><br>
-		<canvas id="glcanvas" width="500" height="500" style="border: 1px solid black;">
-		  Oh no! Your browser doesn't support canvas!
-		</canvas>
 	</body>
 </html>
 

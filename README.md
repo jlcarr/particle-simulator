@@ -1,5 +1,11 @@
 # particle-simulator
-A WebGL project to simulate classical physics particles.
+A WebGL project to simulate classical physics particles.  
+
+GPGPU techniques are used through WebGL to trick the GPU into performing the accelerated physics computations for this simulation.  
+In particular there is mapping between the particle clipspace, (<i>r</i><sub>x</sub>,<i>r</i><sub>y</sub>,<i>r</i><sub>z</sub>) &isin; [-1,1]<sup>3</sup>, to the colorspace, (R,G,B) &isin; [0,1]<sup>3</sup>.  
+Fragment shaders perform the physics computation while rendering to a texture representing the state.  
+
+See the project in action [here](https://jcarr.ca/particle-simulator).  
 
 ## Approach:
 Parameters:
