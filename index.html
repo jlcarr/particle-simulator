@@ -23,7 +23,7 @@
 			<li><b><i>v</i><sub>2</sub></b>: The y-coordinate of the particle's initial velocity</li>
 			<li><b><i>r</i></b>: The radius of the particle</li>
 		</ul>
-		<table>
+		<table id="particle-table">
 			<thead>
 				<tr>
 					<th id="particle-number" rowspan=><i>#</i></th>
@@ -37,13 +37,12 @@
 			<tbody id="particle-list"></tbody>
 		</table>
 		<div>Total: <span id="number-particles">0</span></div>
-		<br>
-		<input type="number" id="number-new-particles"></input> <button onclick="AddRandomParticles();">Add Random Particles</button>
-		<br>
 		<button onclick="ClearParticles();">Clear</button>
+		<br><br>
+		<input type="number" id="number-new-particles"></input> <button onclick="AddRandomParticles();">Add Random Particles</button>
 
 		<h2>Result</h2>
-		<button onclick="main();">Start</button>
+		<button onclick="start();">Start</button>
 		<br><br>
 		<canvas id="glcanvas" width="500" height="500" style="border: 1px solid black;">
 		  Oh no! Your browser doesn't support canvas!

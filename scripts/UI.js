@@ -2,10 +2,12 @@
 
 var n_particles = 0;
 
+
+
 function AddRandomParticles(){
-	let number_new_particles = document.querySelector('#number-new-particles').value;
+	var number_new_particles = document.querySelector('#number-new-particles').value;
 	
-	for (let i = 0; i< number_new_particles; i++) AddRandomParticle();
+	for (var i = 0; i< number_new_particles; i++) AddRandomParticle();
 }
 
 function AddRandomParticle(){
@@ -30,7 +32,7 @@ function AddRandomParticle(){
 	document.querySelector('#particle-list').appendChild(new_particle);
 	
 	n_particles += 1;
-	document.querySelector('#number-particles').textContent = n_particles;
+	updateNParticlesLabel();
 }
 
 function addAttribute(value, editable){
@@ -43,4 +45,15 @@ function addAttribute(value, editable){
 	}
 	else new_attribute.textContent = value;
 	return new_attribute
+}
+
+function ClearParticles(){
+	document.querySelector('#particle-list').innerHTML = '';
+	n_particles = 0;
+	updateNParticlesLabel();
+}
+
+
+function updateNParticlesLabel(){
+	document.querySelector('#number-particles').textContent = n_particles;
 }

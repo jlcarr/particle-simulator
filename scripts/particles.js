@@ -1,15 +1,48 @@
 // A script for simulating particles with WebGL
 
 // Define globals
-let gl = null;
-let glCanvas = null;
-let shaderProgram;
+var gl = null;
+var glCanvas = null;
+var shaderProgram;
 
 //window.addEventListener("load", main, false);
+function start(){
+	var number_list = [];
+	var x_list = [];
+	var v_list = [];
+	var r_list = [];
+
+	var particle_table = document.querySelector('#particle-table');
+	var isheader = true;
+	for (const row of particle_table.rows){
+		if (isheader){
+			isheader = false;
+			continue;
+		}
+		number_list.push(parseInt(row.cells[0].textContent));
+
+		x_list.push([
+			0.5+0.5*parseFloat(row.cells[1].querySelector('input').value),
+			0.5+0.5*parseFloat(row.cells[2].querySelector('input').value),
+			0,
+		]);
+
+		v_list.push([
+			0.5+0.5*parseFloat(row.cells[3].querySelector('input').value),
+			0.5+0.5*parseFloat(row.cells[4].querySelector('input').value),
+			0,
+		]);
+
+		r_list.push(parseFloat(row.cells[5].querySelector('input').value));
+	}
+	if (number_list.length == 0 ) return;
+	
+	performSimulation(number_list, x_list, v_list, r_list);
+}
 
 /**** Shader Programs ****/
 // Position State Compute
-let positionComputeVShader = `
+var positionComputeVShader = `
 	attribute vec4 screenquad;
 
 	attribute vec2 texcoord;
@@ -20,7 +53,7 @@ let positionComputeVShader = `
 		texcoord_passthru = texcoord;
 	}
 `;
-let positionComputeFShader = `
+var positionComputeFShader = `
 	precision mediump float;
 
 	uniform float dt;
@@ -43,7 +76,7 @@ let positionComputeFShader = `
 `;
 
 // Interparticle Collision Compute
-let collisionComputeVShader = `
+var collisionComputeVShader = `
 	attribute vec4 screenquad;
 
 	attribute vec2 texcoord;
@@ -58,7 +91,7 @@ let collisionComputeVShader = `
 		co_texcoord_passthru = co_texcoord;
 	}
 `;
-let collisionComputeFShader = `
+var collisionComputeFShader = `
 	precision mediump float;
 
 	uniform float dt;
@@ -106,7 +139,7 @@ let collisionComputeFShader = `
 `;
 
 // Boundary Collision Compute
-let boundaryComputeVShader = `
+var boundaryComputeVShader = `
 	attribute vec4 screenquad;
 
 	attribute vec2 texcoord;
@@ -117,7 +150,7 @@ let boundaryComputeVShader = `
 		texcoord_passthru = texcoord;
 	}
 `;
-let boundaryComputeFShader = `
+var boundaryComputeFShader = `
 	precision mediump float;
 
 	uniform float dt;
@@ -142,7 +175,7 @@ let boundaryComputeFShader = `
 `;
 
 // Draw
-let drawVShader = `
+var drawVShader = `
 	uniform vec2 resolution;
 
 	// State selection
@@ -166,7 +199,7 @@ let drawVShader = `
 		gl_PointSize = 2.*screen_radius; //10.0 + 20.0*particle_index/float(n_particles-1);
 	}
 `;
-let drawFShader = `
+var drawFShader = `
 	precision mediump float;
 
 	void main(void) {
@@ -181,7 +214,7 @@ let drawFShader = `
 `;
 
 // State Report
-let stateReportVShader = `
+var stateReportVShader = `
 	attribute vec4 position;
 
 	attribute vec2 texcoord;
@@ -192,7 +225,7 @@ let stateReportVShader = `
 		texcoord_passthru = texcoord;
 	}
 `;
-let stateReportFShader = `
+var stateReportFShader = `
 	precision mediump float;
 
 	// Passed in from the vertex shader.
@@ -206,7 +239,7 @@ let stateReportFShader = `
 `;
 
 // Colorspace Background
-let colorspaceVShader = `
+var colorspaceVShader = `
 	attribute vec4 position;
 	varying vec4 colorspace;
 
@@ -215,7 +248,7 @@ let colorspaceVShader = `
 		colorspace = 0.5+0.5*vec4(position.xy,-1,1);
 	}
 `;
-let colorspaceFShader = `
+var colorspaceFShader = `
 	precision mediump float;
 	// Passed in from the vertex shader.
 	varying vec4 colorspace;
@@ -226,7 +259,8 @@ let colorspaceFShader = `
 `;
 
 
-function main() {
+function performSimulation(number_list, x_list, v_list, r_list){
+
 	/**** Initial WebGL Setup ****/
 	glCanvas = document.getElementById("glcanvas");
 	gl = glCanvas.getContext("webgl");
@@ -245,7 +279,7 @@ function main() {
 	/**** Initial JS Setup ****/
 	// Setup data
 
-	var n_particles = 100;
+	var n_particles = number_list.length;
 	var radius = 0.025;
 
 	var n_dim = 2;
@@ -427,9 +461,10 @@ function main() {
 	
 	// fill texture with pixels
 	//var positionTexData = [...Array(n_particles).keys()].map(pos => [pos/(n_particles-1.), pos/(n_particles-1.), 0]).flat();
-	var positionTexData = [...Array(n_particles).keys()].map(pos => [Math.random(), Math.random(), 0]);
+	//var positionTexData = [...Array(n_particles).keys()].map(pos => [Math.random(), Math.random(), 0]);
 	//var positionTexData = [[0.25,0.5,0],[0.75,0.5,0]];//TODO: remove
 	//var positionTexData = [[0,0.5,0],[0.75,0.5,0]];//TODO: remove
+	var positionTexData = x_list;
 	positionTexData = [].concat.apply([], positionTexData); //flatten
 	positionTexData = new Float32Array(positionTexData);
 	// Fill data into a texture
@@ -451,8 +486,9 @@ function main() {
 	
 	// Create a texture for velocity
 	//var velocityTexData = [...Array(n_particles).keys()].map(vel => [0.5*vel/(n_particles-1.)+0.25, 0.75-0.5*vel/(n_particles-1.), 0]).flat();
-	var velocityTexData = [...Array(n_particles).keys()].map(vel => [Math.random(), Math.random(), 0]);
+	//var velocityTexData = [...Array(n_particles).keys()].map(vel => [Math.random(), Math.random(), 0]);
 	//var velocityTexData = [[0.5,0.5,0],[1.0,0.5,0]];//TODO: remove
+	var velocityTexData = v_list;
 	velocityTexData = [].concat.apply([], velocityTexData); //flatten
 	velocityTexData = new Float32Array(velocityTexData);
 	gl.bindTexture(gl.TEXTURE_2D, prevVelocityTexture);
@@ -722,6 +758,7 @@ function main() {
 		// Setup time delta
 		time *= 0.001;
 		var dt = time - then;
+		if (dt > 1) dt = 1;  // clamp down timestep to avoid particles flying off without collision checks
 		then = time;
 		var loopFraction = (time % loopLength)/parseFloat(loopLength);
 		
@@ -743,13 +780,13 @@ function main() {
 
 // Shader building tools from Mozilla
 function buildShaderProgram(vertexSource, fragmentSource) {
-	let program = gl.createProgram();
+	var program = gl.createProgram();
 	
 	// Compile the vertex shader
-	let vShader = compileShader(vertexSource, gl.VERTEX_SHADER);
+	var vShader = compileShader(vertexSource, gl.VERTEX_SHADER);
 	if (vShader) gl.attachShader(program, vShader);
 	// Compile the fragment shader
-	let fShader = compileShader(fragmentSource, gl.FRAGMENT_SHADER);
+	var fShader = compileShader(fragmentSource, gl.FRAGMENT_SHADER);
 	if (fShader) gl.attachShader(program, fShader);
 
 	gl.linkProgram(program)
@@ -763,7 +800,7 @@ function buildShaderProgram(vertexSource, fragmentSource) {
 }
 
 function compileShader(source, type) {
-	let shader = gl.createShader(type);
+	var shader = gl.createShader(type);
 
 	gl.shaderSource(shader, source);
 	gl.compileShader(shader);
