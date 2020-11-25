@@ -134,6 +134,7 @@ https://gpfault.net/posts/webgl2-particles.txt.html
 https://github.com/PavelDoGreat/WebGL-Fluid-Simulation/blob/master/script.js  
 https://stackoverflow.com/questions/56780278/how-to-keep-coordination-between-particles-and-which-texture-pixel-contains-each  
 https://stackoverflow.com/questions/15090657/texture-driven-particles-in-webgl-opengl-using-a-shader  
+http://www.vizitsolutions.com/portfolio/webgl/gpgpu/  
 
 ## Todo
 - Improve numerical stability
@@ -142,3 +143,4 @@ https://stackoverflow.com/questions/15090657/texture-driven-particles-in-webgl-o
 - Additional UI features
    - Random particle ranges
    - Lattice creation
+- Add changeable topologies
